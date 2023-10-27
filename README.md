@@ -18,10 +18,10 @@ def my_model(parameters, level, n_levels, obs_x, obs_y, likelihood, run_id)
         # :param level: int representing the 0-based level index
         # :param n_levels: int representing the total number of levels
         # :param obs_x: 1D list-like of virtual observation ordinates
-        	(not actually used in computations)
+        #	(not actually used in computations)
         # :param obs_y: 1D list-like of observations
         # :param likelihood: an instance of an MLGLUE.Likelihoods
-        	likelihood instance
+        #	likelihood instance
         # :param run_id: an int or str identifier for the model run
 
         Returns
