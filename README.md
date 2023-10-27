@@ -26,9 +26,9 @@ def my_model(parameters, level, n_levels, obs_x, obs_y, likelihood, run_id)
 
         Returns
         -------
-        :return computed_likelihood: the computed likelihood as float
-        :return simulated_observation_equivalents: the simulated
-        	equivalents of the observations
+        # :return computed_likelihood: the computed likelihood as float
+        # :return simulated_observation_equivalents: the simulated
+        #	equivalents of the observations
         """
 
         # your model code
