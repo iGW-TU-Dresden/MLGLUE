@@ -18,6 +18,7 @@ class MLGLUE():
             coarsening_factor=2,
             obs_x=None,
             obs_y=None,
+            thresholds=None,
             multiprocessing=False,
             n_processors=4,
             variance_analysis=None,
@@ -62,6 +63,10 @@ class MLGLUE():
             list-like
         :param obs_y: a 1D list-like corresponding to the observation y-values;
             list-like
+        :param thresholds: a 1D list-like of floats representing the level-
+            dependent likelihood thresholds; if thresholds is not None, the
+            tuning phase is skipped (take this effect into account when
+            defining the total number of calculation steps)
         :param multiprocessing: whether to use multiprocessing or not; bool
         :param n_processors: number of processors to use if multiprocessing is
             True; int
@@ -104,9 +109,18 @@ class MLGLUE():
         self.likelihoods_tuning = [[] for i in range(self.n_levels)] # --> holds likelihood values for all levels from tuning
         self.results_analysis = [[] for i in range(self.n_levels)] # --> holds results from all levels during sampling
         self.results_analysis_tuning = [[] for i in range(self.n_levels)] # --> holds results from all levels during tuning
-        self.thresholds = [] # --> holds likelihood thresholds on all levels
         self.full_results = [] # --> holds full model results (i.e., full array of heads for all model cells instead of
                                 #   simulated equivalents of observed values)
+        self.highest_level_calls = [] # --> holds 1 for each occurence of a highest level call
+        
+        # define thresholds
+        # if thresholds are given directly by the user, they are used subsequently and no tuning is performed
+        if thresholds is not None:
+            self.thresholds = thresholds
+            self.thresholds_predefined = True
+        else:
+            self.thresholds = []
+            self.thresholds_predefined = False
 
         return
 
@@ -470,6 +484,9 @@ class MLGLUE():
                     else:
                         break
 
+                    if level_checker == self.n_levels - 1:
+                        self.highest_level_calls.append(1)
+
                 if (likelihood_ is not None and
                         likelihood_ >= self.thresholds[-1] and
                         level_checker == self.n_levels - 1):
@@ -501,6 +518,9 @@ class MLGLUE():
             method
         """
 
+        # highest level call initialization
+        highest_level_call = 0
+
         # start at the coarsest / lowest level
         level_ = 0
 
@@ -530,7 +550,8 @@ class MLGLUE():
                 level_checker = level__
                 if likelihood_ is not None and likelihood_ >= self.thresholds[level__ - 1]:
                     if level__ == self.n_levels - 1:
-                        print("highest level call: ", run_id)
+                        # print("highest level call: ", run_id)
+                        highest_level_call = 1
                     # if the likelihood was above a threshold in the lower
                     #   level, go up one level and compute the likelihood again
                     if self.model_returns_all == False:
@@ -566,9 +587,9 @@ class MLGLUE():
                     level_checker == self.n_levels - 1):
                 if self.model_returns_all == True:
                     # append full results
-                    return (sample, likelihood_, results, results_analysis_sample, results_full)
+                    return (sample, likelihood_, results, results_analysis_sample, highest_level_call, results_full)
                 else:
-                    return (sample, likelihood_, results, results_analysis_sample)
+                    return (sample, likelihood_, results, results_analysis_sample, highest_level_call)
             else:
                 return None
 
@@ -666,41 +687,42 @@ class MLGLUE():
             iterable_sampling = [(s, idx) for s, idx in zip(samples_sampling,
                                                             [i + samples_divide for i in range(self.n_samples - samples_divide)])]
 
-        if not self.multiprocessing:
-            # perform tuning
-            print("\nStarting tuning without multiprocessing...")
-            _ = self.MLGLUE_tuning(samples_tuning)
+        if self.thresholds_predefined == False:
+            if not self.multiprocessing:
+                # perform tuning
+                print("\nStarting tuning without multiprocessing...")
+                _ = self.MLGLUE_tuning(samples_tuning)
+            
+            elif self.multiprocessing:
+                ray.shutdown()
+                ray.init(num_cpus=self.n_processors)
+                # perform tuning with multiprocessing
+                print("\nStarting tuning with multiprocessing...")
+                with Pool(processes=self.n_processors) as pool: # map # maxtasksperchild=1
+                    for result in pool.starmap(self.evaluate_sample_tuning, iterable_tuning):
+                        if result is not None:
+                            for num, i in enumerate(zip(result[0], result[1])):
+                                self.likelihoods_tuning[num].append(i[0])
+                                self.results_analysis_tuning[num].append(i[1])
+                ray.shutdown()
+                ray.shutdown()
+    
+            # analyze variances and mean values
+            if self.variance_analysis == "strong":
+                self.analyze_variances_likelihoods_strong()
+                self.analyze_means_likelihoods_strong()
+            elif self.variance_analysis == "weak":
+                self.analyze_variances_likelihoods_weak()
+                self.analyze_means_likelihoods_strong()
+            elif self.variance_analysis is None:
+                pass
+            else:
+                print("No valid variance analysis methodology selected; "
+                      "continuing without analysis!")
 
-        elif self.multiprocessing:
-            ray.shutdown()
-            ray.init(num_cpus=self.n_processors)
-            # perform tuning with multiprocessing
-            print("\nStarting tuning with multiprocessing...")
-            with Pool(processes=self.n_processors) as pool: # map # maxtasksperchild=1
-                for result in pool.starmap(self.evaluate_sample_tuning, iterable_tuning):
-                    if result is not None:
-                        for num, i in enumerate(zip(result[0], result[1])):
-                            self.likelihoods_tuning[num].append(i[0])
-                            self.results_analysis_tuning[num].append(i[1])
-            ray.shutdown()
-            ray.shutdown()
-
-        # analyze variances and mean values
-        if self.variance_analysis == "strong":
-            self.analyze_variances_likelihoods_strong()
-            self.analyze_means_likelihoods_strong()
-        elif self.variance_analysis == "weak":
-            self.analyze_variances_likelihoods_weak()
-            self.analyze_means_likelihoods_strong()
-        elif self.variance_analysis is None:
-            pass
-        else:
-            print("No valid variance analysis methodology selected; "
-                  "continuing without analysis!")
-
-        # compute thresholds
-        self.thresholds = self.calculate_threshold()
-        # self.thresholds = [0., 0., 0.]
+            # compute thresholds
+            self.thresholds = self.calculate_threshold()
+            # self.thresholds = [0., 0., 0.]
 
         if not self.multiprocessing:
             # perform sampling
@@ -728,8 +750,10 @@ class MLGLUE():
                         self.results.append(eval_[2])
                         for num, i in enumerate(eval_[3]):
                             self.results_analysis[num].append(i)
+                        if eval_[4] == 1:
+                            self.highest_level_calls.append(eval_[4])
                         if self.model_returns_all == True:
-                            self.full_results.append(eval_[4])
+                            self.full_results.append(eval_[5])
             ray.shutdown()
 
             if self.model_returns_all == False:
