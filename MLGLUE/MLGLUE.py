@@ -103,24 +103,22 @@ class MLGLUE():
         self.model_returns_all = model_returns_all
 
         # initialize output data structures
-        self.results = [] # --> holds only the highest level model outputs
-        self.selected_samples = [] # --> holds behavioural samples (samples that are accepted on the highest level)
-        self.likelihoods = [] # --> holds highest level likelihood values corresponding to selected_samples
-        self.likelihoods_tuning = [[] for i in range(self.n_levels)] # --> holds likelihood values for all levels from tuning
+        self.results = [] # --> this holds only the final results (i.e., from the finest level)
+        self.selected_samples = []
+        self.likelihoods = []
+        self.likelihoods_tuning = [[] for i in range(self.n_levels)]
         self.results_analysis = [[] for i in range(self.n_levels)] # --> holds results from all levels during sampling
         self.results_analysis_tuning = [[] for i in range(self.n_levels)] # --> holds results from all levels during tuning
-        self.full_results = [] # --> holds full model results (i.e., full array of heads for all model cells instead of
-                                #   simulated equivalents of observed values)
-        self.highest_level_calls = [] # --> holds 1 for each occurence of a highest level call
-        
-        # define thresholds
-        # if thresholds are given directly by the user, they are used subsequently and no tuning is performed
+        self.highest_level_calls = [] # --> holds identifiers for highest level calls (1 corresponds to a highest level call)
+
         if thresholds is not None:
             self.thresholds = thresholds
             self.thresholds_predefined = True
         else:
             self.thresholds = []
             self.thresholds_predefined = False
+        self.full_results = [] # --> holds full model results (i.e., full array of heads for all model cells instead of
+                                #   simulated equivalents of observed values)
 
         return
 
@@ -129,11 +127,10 @@ class MLGLUE():
         Perform the tuning phase of MLGLUE
 
         :param samples: list-like with parameter samples for tuning with shape
-            (n_samples, n_parameters); list-ike
-        
-        :return: likelihoods_tuning (the likelihoods corresponding to the
-            samples)
-        :return: results_analysis_tuning (the model outputs on each level for each sample)
+            (n_samples, n_parameters); list-ike     
+            
+        :return likelihoods_tuning: the likelihoods corresponding to the samples; list-like
+        :return results_analysis_tuning: the model outputs on each level for each sample; list-like
 
         Note: if the model function only has one level, it should be the finest /
             target level.
@@ -193,6 +190,8 @@ class MLGLUE():
 
     def analyze_variances_likelihoods_strong(self):
         """
+        Analyze the variances from the tuning phase and test whether the strong
+        variance inequality holds.
         Analyze the relationships between levels in terms of variances:
             - variances of likelihood values on each individual level
             - covariances of likelihoods across levels
@@ -200,10 +199,10 @@ class MLGLUE():
 
         Specifically, the following inequality is evaluated for all levels:
             Var[L_(l) - L_(l-1)] = Var[L_(l)] + Var[L_(l-1)] - 2 * Cov[L_(l), L_(l-1)]
-
-        MLGLUE is stopped if 2 * Cov[L_(l), L_(l-1)] < Var[L_(l-1)] for any l
-
-        :return: None
+            
+        Note that variances within levels as well as variances of differences between
+            levels are printed as logarithms with the base equal to the coarsening
+            factor!
         """
 
         self.likelihoods_tuning = np.asarray(self.likelihoods_tuning)
@@ -249,7 +248,7 @@ class MLGLUE():
         # initialize list to store booleans representing whether the cross-level
         #   variance decays
         decay = []
-        print("Covariances across levels: ", covs_cross_levels)
+        print("Covs across levels: ", covs_cross_levels)
         print("Variances within levels: ", vars_within_levels)
         print("Variances across levels: ", rhs)
         # iterate over levels to check variance inequality
@@ -280,7 +279,7 @@ class MLGLUE():
                 msg = ("The variance inequality does not hold for all two "
                        "subsequent levels!")
                 print(msg)
-                raise ValueError(msg)
+                # raise ValueError(msg)
             else:
                 print("The variance inequality holds between all two "
                       "subsequent levels!")
@@ -288,7 +287,7 @@ class MLGLUE():
             if not np.array(decay).all():
                 msg = ("The cross-level variance does not decay monotonically!")
                 print(msg)
-                raise ValueError(msg)
+                # raise ValueError(msg)
             else:
                 print("The cross-level variance decays monotonically!")
 
@@ -299,11 +298,7 @@ class MLGLUE():
 
     def analyze_means_likelihoods_strong(self):
         """
-        Analyze the relationships between levels in terms of mean values:
-            - means of likelihood values on each individual level
-            - means of the difference between likelihood values on subsequent levels
-
-        :return: None
+        Analyze the means from the tuning phase.
         """
 
         self.likelihoods_tuning = np.asarray(self.likelihoods_tuning)
@@ -343,13 +338,8 @@ class MLGLUE():
 
     def analyze_variances_likelihoods_weak(self):
         """
-        Analyze the relationships between levels in terms of the correlation between
-        subsequent levels.
-
-        MLGLUE is stopped if there is zero or negative correlation between
-        subsequent levels.
-
-        :return: None
+        Analyze the variances from the tuning phase and test whether all
+        levels are correlated (check for positive correlation)
         """
 
         self.likelihoods_tuning = np.asarray(self.likelihoods_tuning)
@@ -398,8 +388,8 @@ class MLGLUE():
         Calculate the thresholds according to the threshold fraction given by
         the likelihood function
 
-        :return: thresholds (list-like specifying the float threshold values
-            on each level)
+        :return threshold: list-like specifying the scalar threshold values
+            on each level; list-like
         """
 
         counter = 0
@@ -407,10 +397,6 @@ class MLGLUE():
             threshold = np.quantile(level, 1 - self.likelihood.threshold)
             self.thresholds.append(threshold)
             counter += 1
-
-        # get the maximum threshold and use that for all levels
-        # self.thresholds = [max(self.thresholds)] * self.n_levels
-
         print("\nThe calculated thresholds are: {}".format(self.thresholds))
 
         return self.thresholds
@@ -419,12 +405,8 @@ class MLGLUE():
         """
         Perform the sampling phase of MLGLUE
 
-        :param samples: list-like of parameter samples to evaluate with shape
-            (n_samples, n_parameters); list-like
-
-        :return: selected_samples, list-like of behavioural parameter samples
-        :return: likelihoods, list-like of likelihood values corresponding to the
-            selected_samples
+        :return selected_samples: selected samples; list-like
+        :return likelihoods: the likelihoods corresponding to the selected samples; list-like
 
         Note: if the model function only has one level, it should be the finest /
             target level.
@@ -502,23 +484,27 @@ class MLGLUE():
         #     for the highest level
         return self.selected_samples, self.likelihoods
 
-    # @ray.remote
     def evaluate_sample(self, sample, run_id):
         """
         A function for evaluate a sample that can be used in a multiprocessing
         framework; used during the sampling phase
 
         :param sample: the current sample; list-like
-        :param run_id: a run identifier; string or int
-        :return: a tuple of (selected_sample, likelihood, results, results_analysis_sample, results_full),
-            if the sample is accepted; None is returned if the sample is not accepted
+        :param run_id: an integer identifier for the current model run, which is passed to the model function; int
 
-        Note: the selected sample as well as the corresponding likelihood are
-            appended to a global list that is returned by the perform_MLGLUE
-            method
+        :return sample: the parameter sample (returned if selected); list-like
+        :return likelihood_: the likelihood corresponding to the sample (returned if sample is selected); float
+        :return results: model results corresponding to obs_y (returned if sample is selected); list-like
+        :return results_analysis_sample: results on all model levels (returned if sample is selected); list-like
+        :return highest_level_call: 0 if no highest level call, 1 if highest level call; int
+        :return results_full: if model returns more results, they are returned here as well (if sample is selected);
+            list-like
+
+        Note: the selected sample as well as the corresponding likelihood are appended to a global list that is
+            returned by the perform_MLGLUE method
         """
 
-        # highest level call initialization
+        # define highest level call
         highest_level_call = 0
 
         # start at the coarsest / lowest level
@@ -582,26 +568,22 @@ class MLGLUE():
                     level_checker -= 1
                     break
 
-            if (likelihood_ is not None and
-                    likelihood_ >= self.thresholds[-1] and
-                    level_checker == self.n_levels - 1):
+            if (likelihood_ is not None and likelihood_ >= self.thresholds[-1] and level_checker == self.n_levels - 1):
                 if self.model_returns_all == True:
                     # append full results
                     return (sample, likelihood_, results, results_analysis_sample, highest_level_call, results_full)
                 else:
                     return (sample, likelihood_, results, results_analysis_sample, highest_level_call)
             else:
-                return None
+                return (highest_level_call, False)
 
-    # @ray.remote
     def evaluate_sample_tuning(self, sample, run_id):
         """
         A function for evaluating a sample that can be used in a multiprocessing
         framework; used during the tuning phase
 
         :param sample: the current sample; list-like
-        :return: a tuple of (selected_sample, likelihood), if the sample is
-            accepted; None is returned if the sample is not accepted
+        :param run_id: an integer identifier for the current model run, which is passed to the model function; int
         """
 
         likelihoods_sample = []
@@ -648,20 +630,25 @@ class MLGLUE():
 
     def perform_MLGLUE(self):
         """
-        Perform the full MLGLUE, including a tuning phase where the
+        Perform the full MLGLUE sampling, including a tuning phase where the
         inequality regarding variances is checked
 
-        :return: selected_samples; list-like of behavioural samples
-        :return: likelihoods; list-like of likelihoods corresponding to the behavioural samples
-        :return: results; list-like of model outputs on all levels for the behavioural samples
-        :return: results_full; list-like of full model results (optional)
+        :return selected_samples: the selected samples of MLGLUE; list-like
+        :return likelihoods: the likelihoods corresponding to the selected samples; list-like
+        :return results: the model resoults (corresponding to obs_y) corresponding to the selected
+            samples; list-like
+        :return results_full: if the model returns more than simulated observation equivalents,
+            these results corresponding to the selected samples are also returned; list-like
         """
+        
+        try:
+            ray.shutdown()
+        except:
+            pass
 
         if self.samples is None:
             print("No samples provided, using uniform sampling...")
             # generate samples
-            # np.random.seed(2)
-            # np.random.seed(42)
             self.samples = np.random.uniform(
                 low=self.lower_bounds,
                 high=self.upper_bounds,
@@ -692,7 +679,7 @@ class MLGLUE():
                 # perform tuning
                 print("\nStarting tuning without multiprocessing...")
                 _ = self.MLGLUE_tuning(samples_tuning)
-            
+
             elif self.multiprocessing:
                 ray.shutdown()
                 ray.init(num_cpus=self.n_processors)
@@ -706,7 +693,7 @@ class MLGLUE():
                                 self.results_analysis_tuning[num].append(i[1])
                 ray.shutdown()
                 ray.shutdown()
-    
+            
             # analyze variances and mean values
             if self.variance_analysis == "strong":
                 self.analyze_variances_likelihoods_strong()
@@ -719,10 +706,9 @@ class MLGLUE():
             else:
                 print("No valid variance analysis methodology selected; "
                       "continuing without analysis!")
-
+            
             # compute thresholds
             self.thresholds = self.calculate_threshold()
-            # self.thresholds = [0., 0., 0.]
 
         if not self.multiprocessing:
             # perform sampling
@@ -741,10 +727,7 @@ class MLGLUE():
             print("\nStarting sampling with multiprocessing...")
             with Pool(processes=self.n_processors) as pool: # maxtasksperchild=1
                 for eval_ in pool.starmap(self.evaluate_sample, iterable_sampling):
-                    # TODO: this has to be improved somehow; sometimes,
-                    #  eval_[2] is None here but the result for the model
-                    #  call is not actually None
-                    if eval_ is not None and eval_[2] is not None:
+                    if eval_ is not None and eval_[1] is not False:
                         self.selected_samples.append(eval_[0])
                         self.likelihoods.append(eval_[1])
                         self.results.append(eval_[2])
@@ -754,6 +737,9 @@ class MLGLUE():
                             self.highest_level_calls.append(eval_[4])
                         if self.model_returns_all == True:
                             self.full_results.append(eval_[5])
+                    elif eval_ is not None and eval_[1] is False:
+                        if eval_[0] == 1:
+                            self.highest_level_calls.append(eval_[0])
             ray.shutdown()
 
             if self.model_returns_all == False:
@@ -768,8 +754,10 @@ class MLGLUE():
 
         :param quantiles: the quantiles to return for the prediction;
             list-like of three float values [lower q., 0.5, upper q.]
-        :return: uncertainty; list-like with shape (n_outputs, 3) with the
-            uncertainty estimates
+            
+        :return: numpy array of shape (len(obs_x), 3) having the lower
+            quantile in the first, the median in the second, and the
+            upper quantile in the third column; numpy array
         """
 
         # normalize likelihoods

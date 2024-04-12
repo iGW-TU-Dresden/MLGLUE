@@ -30,8 +30,8 @@ class InverseErrorVarianceLikelihood():
             list-like
         :param sim: a 1D list-like corresponding to the simulation y-values;
             list-like
-
-        :return: likelihood, a float value for the likelihood
+        
+        :return likelihood: a float value for the likelihood
         """
 
         try:
@@ -52,7 +52,6 @@ class InverseErrorVarianceLikelihood():
                 msg = ("Length mismatch! Observed values have length {} but "
                        " simulated values have length {}".format(len(obs),
                                                                  len(sim)))
-                # raise ValueError(msg)
                 return 0.
         except ValueError:
             raise
@@ -113,8 +112,8 @@ class RelativeVarianceLikelihood():
             list-like
         :param sim: a 1D list-like corresponding to the simulation y-values;
             list-like
-
-        :return: likelihood, a float value for the likelihood
+        
+        :return likelihood: a float value for the likelihood
         """
 
         try:
@@ -191,13 +190,13 @@ class GaussianLogLikelihood():
     def likelihood(self, obs=None, sim=None):
         """
         Compute the Gaussian log-likelihood
-
+        
         :param obs: a 1D list-like corresponding to the observation y-values;
             list-like
         :param sim: a 1D list-like corresponding to the simulation y-values;
             list-like
-
-        :return: likelihood, a float value for the likelihood
+        
+        :return likelihood: a float value for the likelihood
         """
 
         try:
