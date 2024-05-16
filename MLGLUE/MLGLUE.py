@@ -5,6 +5,215 @@ import ray
 from ray.util.multiprocessing import Pool
 
 class MLGLUE():
+    """The MLGLUE class.
+    
+    This is the basic class of the MLGLUE implementation. It is used to
+    define all general settings of MLGLUE sampling for a given case
+    such as the model function, the likelihood function, parameter
+    samples (or settings for internal sample generation if no samples
+    are given by the user directly), etc.
+
+    Parameters
+    ----------
+    model : Callable
+        The callable representing the model to which MLGLUE should be
+        applied. See the Notes section below for further details.
+    likelihood
+        An instance of an MLGLUE likelihood object. See the Notes
+        section below for further details.
+    lower_bounds : 1D array-like of float
+        The lower bounds of the uniform distribution over the model
+        parameters. This attribute is ignored if `samples` are directly
+        supplied. `lower_bounds` has to have shape (n_parameters,).
+    upper_bounds : 1D array-like of float
+        The upper bounds of the uniform distribution over the model
+        parameters. This attribute is ignored if `samples` are directly
+        supplied. `upper_bounds` has to have shape (n_parameters,).
+    n_samples : int
+        The total number of parameter samples to draw from the uniform
+        prior distribution. Note that this includes the samples used
+        for tuning! This attribute is ignored if `samples` are directly
+        supplied.
+    samples : (tuple of) 2D array-like of float, optional
+        The prior parameter samples, which can optionally be supplied.
+        If `samples` are given, `lower_bounds`, `upper_bounds`, and
+        `n_samples` are ignored. Default is None. If a 2D array-like,
+        it is considered the full set of parameter samples, including
+        the samples used for tuning. If a tuple of 2D array-like, the
+        first element of the tuple is considered as tuning samples and
+        the second element as the regular samples. Every 2D array-like
+        has to have shape (n_samples, n_parameters).
+    tuning : float
+        The tuning fraction (0. < `tuning` < 1.). The rounded result
+        (int(n_samples * tuning) is used to split the samples into the
+        two parts.
+    n_levels : int
+        The number of levels in the hierarchy.
+    coarsening_factor : float
+        For the case of a geometric series of resolutions in the
+        hierarchy, `coarsening_factor` represents the coarsening of the
+        resolution when going from level (l) to level (l-1).
+    obs : 1D array-like of float
+        The observations for which the model simulates values.
+    thresholds : 1D array-like of float, optional
+        The level-dependent likelihood thresholds to use. Has to have
+        shape (n_levels,). If `thresholds` is given, the tuning phase
+        is skipped. Note that this has an effect on the definition of
+        the parameter samples! Default is None.
+    multiprocessing : bool
+        Whether to use multiprocessing using the Ray package or not.
+    n_processors : int, optional
+        The number of CPUs to use if `multiprocessing` is enabled. By
+        default, all processors are used (`n_processors`=None).
+    savefigs
+        Whether to save variance analysis figures or not. If None,
+        figures will not be saved. If str, figures will be saved as png
+        with the str as identifier.
+    hiearchy_analysis : bool
+        Whether hiararchy analysis is strict or not. If not strict 
+        (False), results of variance and mean analysis are printed to
+        the screen but MLGLUE continues independently of the result. If
+        strict (True), results are also printed to the screen but
+        MLGLUE is stopped if the variances and mean values between
+        levels (l-1, l) is larger than on level (l) and / or if the
+        variances or mean values between levels do not decay
+        monotonically.
+    
+    Attributes
+    ----------
+    model : Callable
+        The callable representing the model to which MLGLUE should be
+        applied. See the Notes section below for further details.
+    likelihood
+        An instance of an MLGLUE likelihood object. See the Notes
+        section below for further details.
+    lower_bounds : 1D array-like of float
+        The lower bounds of the uniform distribution over the model
+        parameters. This attribute is ignored if `samples` are directly
+        supplied. `lower_bounds` has to have shape (n_parameters,).
+    upper_bounds : 1D array-like of float
+        The upper bounds of the uniform distribution over the model
+        parameters. This attribute is ignored if `samples` are directly
+        supplied. `upper_bounds` has to have shape (n_parameters,).
+    n_samples : int
+        The total number of parameter samples to draw from the uniform
+        prior distribution. Note that this includes the samples used
+        for tuning! This attribute is ignored if `samples` are directly
+        supplied.
+    samples : 2D array-like of float
+        The prior parameter samples, which can optionally be supplied.
+        Note that this includes the samples used for tuning! If
+        `samples` are given, `lower_bounds`, `upper_bounds`, and
+        `n_samples` are ignored. Has to have shape
+        (n_samples, n_parameters).
+    samples_tuning : 2D array-like of float
+        The (prior) parameter samples used for tuning. If
+        `samples_tuning` are given, `lower_bounds`, `upper_bounds`, and
+        `n_samples` are ignored. Has to have shape (n_samples,
+        n_parameters).
+    samples_tuning : 2D array-like of float
+        The (prior) parameter samples used for sampling. If
+        `samples_sampling` are given, `lower_bounds`, `upper_bounds`,
+        and `n_samples` are ignored. Has to have shape (n_samples,
+        n_parameters).
+    tuning : float
+        The tuning fraction (0. < `tuning` < 1.). The rounded result
+        (int(n_samples * tuning) is used to split the samples into the
+        two parts.
+    n_levels : int
+        The number of levels in the hierarchy.
+    coarsening_factor : float
+        For the case of a geometric series of resolutions in the
+        hierarchy, `coarsening_factor` represents the coarsening of the
+        resolution when going from level (l) to level (l-1).
+    obs : 1D array-like of float
+        The observations for which the model simulates values.
+    thresholds : 1D array-like of float
+        The level-dependent likelihood thresholds to use. Has to have
+        shape (n_levels,). If `thresholds` is given, the tuning phase
+        is skipped. Note that this has an effect on the definition of
+        the parameter samples! Default is None.
+    multiprocessing : bool
+        Whether to use multiprocessing using the Ray package or not.
+    n_processors : int
+        The number of CPUs to use if `multiprocessing` is enabled. By
+        default, all processors are used (`n_processors`=None).
+    savefigs
+        Whether to save variance analysis figures or not. If None,
+        figures will not be saved. If str, figures will be saved as png
+        with the str as identifier.
+    hiearchy_analysis : bool
+        Whether hiararchy analysis is strict or not. If not strict 
+        (False), results of variance and mean analysis are printed to
+        the screen but MLGLUE continues independently of the result. If
+        strict (True), results are also printed to the screen but
+        MLGLUE is stopped if the variances and mean values between
+        levels (l-1, l) is larger than on level (l) and / or if the
+        variances or mean values between levels do not decay
+        monotonically.
+    selected_samples : 2D array-like of float
+        The array of selected samples that are accepted on the highest
+        level; has individual samples as rows and variables / model
+        parameters as columns.
+    results : 2D array-like of float
+        Holds simulated observation equivalents corresponding to all
+        posterior samples; has shape (len(selected_samples), len(obs)).
+    results_analysis : 3D array-like of float
+        Holds simulated observation equivalents corresponding to all
+        posterior samples on all levels; has shape (n_levels,
+        len(selected_samples), len(obs)).
+    results_analysis_tuning : 3D array-like of float
+        Holds simulated observation equivalents corresponding to all
+        tuning samples (except for tuning samples that result in an
+        error or NaN returned by the model callable) on all levels;
+        has the tuning samples in the first dimension, the levels in
+        the second dimension, and the simulated values in the third
+        dimension.
+    likelihoods : 1D array-like of float
+        The likelihood values correpsonding to the selected samples.
+    normalized_likelihoods : 1D array-like of float
+        Normalized likelihood values used for the computation of
+        uncertainty estimates.
+    likelihoods_tuning : 2D array-like of float
+        The likelihood values on all levels for all tuning samples
+        (except for tuning samples that result in an error or NaN
+        returned by the model callable) on all levels; has the levels
+        in the rows and tuning samples in columns.
+    highest_level_calls : 1D array-like of int
+        A list with the number of ones equal to the number of calls
+        made to the model on the highest level. This is implemented
+        like that currently as a list can be shared across processes / 
+        workers. A single variable (e.g., an int) could not be shared
+        this way. This will be improved in the future.        
+    
+    Notes
+    -----
+    The callable for the `model` attribute has to accept the following
+    arguments: parameters (1D list-like of floats representing model
+    parameters), level (0-based integer representing the level index),
+    n_levels (integer representing the total number of levels), obs (1D
+    list-like of floats representing observations), likelihood (the
+    MLGLUE likelihood function). The callable has to return a float
+    corresponding to the likelihood of the given parameter sample and
+    return simulation results (these results can either be only
+    simulated observation equivalents or other simulation results; if
+    other simulation results are given as well, the corresponding
+    weight in the likelihood function should be set to zero). The
+    likelihood value should be computed using a likelihood function
+    implemented in this package; user-defined likelihood functions can
+    be used as well but are not tested. The simulated values have to be
+    of a type that can be appended to a list but do not have to have a
+    certain structure otherwise.
+    The object instance for the `likelihood` attribute should then have
+    a `likelihood` method (see the Examples section for further
+    details). The likelihood method has to accept the following
+    arguments: obs (1D list-like of floats representing observations),
+    sim (1D list-like of floats representing simulated observation
+    equivalents). Using a likelihood included in the present package
+    already ensures this structure.
+    If the model function only has one level, it should be the finest /
+    target level.
+    """
     def __init__(
             self,
             model,
