@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MLGLUE.Likelihoods &mdash; MLGLUE 0.0.5 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=282f96c0"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            MLGLUE
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">MLGLUE</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">MLGLUE</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">MLGLUE.Likelihoods</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for MLGLUE.Likelihoods</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<div class="viewcode-block" id="InverseErrorVarianceLikelihood">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.Likelihoods.InverseErrorVarianceLikelihood">[docs]</a>
+<span class="k">class</span> <span class="nc">InverseErrorVarianceLikelihood</span><span class="p">():</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">T</span><span class="o">=</span><span class="mf">2.</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The Inverse Variance Likelihood class.</span>
+
+<span class="sd">        This class represents the Inverse Variance Likelihood function with</span>
+<span class="sd">        its utilities. It is computed as</span>
+
+<span class="sd">        .. math:: L(\\theta | Y) = (\\sigma_e^2)^{-T}</span>
+
+<span class="sd">        where :math:`L(\\cdot)` is the likelihood function,</span>
+<span class="sd">        :math:`\\theta` are model parameters, :math:`Y` are observations,</span>
+<span class="sd">        :math:`\\sigma_e^2` is the error or residual variance, and</span>
+<span class="sd">        :math:`T` is the shape parameter.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        threshold : float</span>
+<span class="sd">            The threshold to use, given as a fraction of simulations that</span>
+<span class="sd">            are accepted (the actual likelihood value for the threshold is</span>
+<span class="sd">            inferred during the tuning phase of MLGLUE). The value has to</span>
+<span class="sd">            be in the range (0, 1).</span>
+<span class="sd">        T : float</span>
+<span class="sd">            A shape parameter of the likelihood function. When :math:`T=0`,</span>
+<span class="sd">            every simulation will have equal likelihood. When :math:`T \\to \\infty`,</span>
+<span class="sd">            the emphasis will be put on the single best simulation. A value</span>
+<span class="sd">            of :math:`T=1` is often used.</span>
+<span class="sd">        weights : 1D array-like of float</span>
+<span class="sd">            The weights of the observations / simulated observation</span>
+<span class="sd">            equivalents. Note that those weights are not checked further</span>
+<span class="sd">            and are just used as provided.</span>
+
+<span class="sd">        Attributes</span>
+<span class="sd">        ---------- </span>
+<span class="sd">        threshold : float</span>
+<span class="sd">            The threshold to use, given as a fraction of simulations that</span>
+<span class="sd">            are accepted (the actual likelihood value for the threshold is</span>
+<span class="sd">            inferred during the tuning phase of MLGLUE). The value has to</span>
+<span class="sd">            be in the range (0, 1).</span>
+<span class="sd">        T : float</span>
+<span class="sd">            A shape parameter of the likelihood function. When :math:`T=0`,</span>
+<span class="sd">            every simulation will have equal likelihood. When :math:`T \\to \\infty`,</span>
+<span class="sd">            the emphasis will be put on the single best simulation. A value</span>
+<span class="sd">            of :math:`T=1` is often used.</span>
+<span class="sd">        weights : 1D array-like of float</span>
+<span class="sd">            The weights of the observations / simulated observation</span>
+<span class="sd">            equivalents. Note that those weights are not checked further</span>
+<span class="sd">            and are just used as provided.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span> <span class="o">=</span> <span class="n">threshold</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="n">T</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">weights</span>
+
+        <span class="k">return</span>
+
+<div class="viewcode-block" id="InverseErrorVarianceLikelihood.likelihood">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.Likelihoods.InverseErrorVarianceLikelihood.likelihood">[docs]</a>
+    <span class="k">def</span> <span class="nf">likelihood</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sim</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the Inverse Variance Likelihood</span>
+<span class="sd">        </span>
+<span class="sd">        Compute the Inverse Variance Likelihood: </span>
+
+<span class="sd">        .. math:: L(\\theta|Y) = (\\sigma_e^2)^{-T}</span>
+
+<span class="sd">        where :math:`L(\\cdot)` is the likelihood function,</span>
+<span class="sd">        :math:`\\theta` are model parameters, :math:`Y` are observations,</span>
+<span class="sd">        :math:`\\sigma_e^2` is the error or residual variance, and</span>
+<span class="sd">        :math:`T` is the shape parameter.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        obs : 1D array-like of float</span>
+<span class="sd">            The observations of the system.</span>
+<span class="sd">        sim : 1D array-like of float</span>
+<span class="sd">            The simulated observation equivalents, simulated by the model.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        likelihood : float</span>
+<span class="sd">            The likelihood computed from observations and simulated</span>
+<span class="sd">            observation equivalents.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">obs</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">sim</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;No observations and no simulated values are given!&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">obs</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">sim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;No observations are given!&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">obs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">sim</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;No simulated values are given!&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sim</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">):</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;Length mismatch! Observed values have length </span><span class="si">{}</span><span class="s2"> but &quot;</span>
+                       <span class="s2">&quot; simulated values have length </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">),</span>
+                                                                 <span class="nb">len</span><span class="p">(</span><span class="n">sim</span><span class="p">)))</span>
+                <span class="k">return</span> <span class="mf">0.</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">):</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;Length mismatch! Weights values have length </span><span class="si">{}</span><span class="s2"> but &quot;</span>
+                       <span class="s2">&quot; observed values have length </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                            <span class="nb">len</span><span class="p">(</span><span class="n">weights</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">))</span>
+                       <span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span>
+
+        <span class="c1"># calculate the likelihood</span>
+        <span class="n">residuals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">sim</span><span class="p">)</span>
+        <span class="n">residuals</span> <span class="o">*=</span> <span class="n">weights</span>
+        <span class="n">ssr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">residuals</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">likelihood</span> <span class="o">=</span> <span class="p">(</span><span class="n">ssr</span> <span class="o">/</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span> <span class="o">-</span> <span class="mi">2</span><span class="p">))</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+
+        <span class="c1"># handle infinite likelihood values</span>
+        <span class="c1"># such values should not completely break the algorithm but either</span>
+        <span class="c1"># be very large negative or very large positive numbers</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">likelihood</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isneginf</span><span class="p">(</span><span class="n">likelihood</span><span class="p">):</span>
+                <span class="k">return</span> <span class="o">-</span><span class="mf">1e10</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mf">1e10</span>
+
+        <span class="k">return</span> <span class="n">likelihood</span></div>
+</div>
+
+
+<div class="viewcode-block" id="RelativeVarianceLikelihood">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.Likelihoods.RelativeVarianceLikelihood">[docs]</a>
+<span class="k">class</span> <span class="nc">RelativeVarianceLikelihood</span><span class="p">():</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The Relative Variance Likelihood class.</span>
+
+<span class="sd">        This class represents the Relative Variance Likelihood function</span>
+<span class="sd">        with its utilities. It is computed as</span>
+
+<span class="sd">        .. math:: L(\\theta | Y) = 1 - \\frac{\\sigma_e^2}{\\sigma_{obs}^2}</span>
+
+<span class="sd">        where :math:`L(\\cdot)` is the likelihood function,</span>
+<span class="sd">        :math:`\\theta` are model parameters, :math:`Y` are observations,</span>
+<span class="sd">        :math:`\\sigma_e^2` is the variance of errors or residuals, and</span>
+<span class="sd">        :math:`\\sigma_{obs}^2` is the variance of observed values.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        threshold : float</span>
+<span class="sd">            The threshold to use, given as a fraction of simulations that</span>
+<span class="sd">            are accepted (the actual likelihood value for the threshold is</span>
+<span class="sd">            inferred during the tuning phase of MLGLUE). The value has to</span>
+<span class="sd">            be in the range (0, 1).</span>
+<span class="sd">        weights : 1D array-like of float</span>
+<span class="sd">            The weights of the observations / simulated observation</span>
+<span class="sd">            equivalents. Note that those weights are not checked further</span>
+<span class="sd">            and are just used as provided.</span>
+
+<span class="sd">        Attributes</span>
+<span class="sd">        ---------- </span>
+<span class="sd">        threshold : float</span>
+<span class="sd">            The threshold to use, given as a fraction of simulations that</span>
+<span class="sd">            are accepted (the actual likelihood value for the threshold is</span>
+<span class="sd">            inferred during the tuning phase of MLGLUE). The value has to</span>
+<span class="sd">            be in the range (0, 1).</span>
+<span class="sd">        weights : 1D array-like of float</span>
+<span class="sd">            The weights of the observations / simulated observation</span>
+<span class="sd">            equivalents. Note that those weights are not checked further</span>
+<span class="sd">            and are just used as provided.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span> <span class="o">=</span> <span class="n">threshold</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">weights</span>
+
+        <span class="k">return</span>
+
+<div class="viewcode-block" id="RelativeVarianceLikelihood.likelihood">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.Likelihoods.RelativeVarianceLikelihood.likelihood">[docs]</a>
+    <span class="k">def</span> <span class="nf">likelihood</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sim</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the Relative Variance Likelihood</span>
+<span class="sd">        </span>
+<span class="sd">        Compute the Relative Variance Likelihood:</span>
+
+<span class="sd">        .. math:: L(\\theta | Y) = 1 - \\frac{\\sigma_e^2}{\\sigma_{obs}^2}</span>
+
+<span class="sd">        where :math:`L(\\cdot)` is the likelihood function,</span>
+<span class="sd">        :math:`\\theta` are model parameters, :math:`Y` are observations,</span>
+<span class="sd">        :math:`\\sigma_e^2` is the variance of errors or residuals, and</span>
+<span class="sd">        :math:`\\sigma_{obs}^2` is the variance of observed values.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        obs : 1D array-like of float</span>
+<span class="sd">            The observations of the system.</span>
+<span class="sd">        sim : 1D array-like of float</span>
+<span class="sd">            The simulated observation equivalents, simulated by the model.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        likelihood : float</span>
+<span class="sd">            The likelihood computed from observations and simulated</span>
+<span class="sd">            observation equivalents.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">obs</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">sim</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;No observations and no simulated values are given!&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">obs</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">sim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;No observations are given!&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">obs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">sim</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;No simulated values are given!&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sim</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">):</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;Length mismatch! Observed values have length </span><span class="si">{}</span><span class="s2"> but &quot;</span>
+                       <span class="s2">&quot; simulated values have length </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">),</span>
+                                                                 <span class="nb">len</span><span class="p">(</span><span class="n">sim</span><span class="p">)))</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">))</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">):</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;Length mismatch! Weights values have length </span><span class="si">{}</span><span class="s2"> but &quot;</span>
+                       <span class="s2">&quot; observed values have length </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">))</span>
+                       <span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span>
+
+        <span class="c1"># calculate the likelihood</span>
+        <span class="n">residuals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">sim</span><span class="p">)</span>
+        <span class="n">residuals</span> <span class="o">*=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span>
+        <span class="n">var_obs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span><span class="o">.</span><span class="n">var</span><span class="p">()</span>
+        <span class="n">var_res</span> <span class="o">=</span> <span class="n">residuals</span><span class="o">.</span><span class="n">var</span><span class="p">()</span>
+        <span class="n">likelihood</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">var_res</span> <span class="o">/</span> <span class="n">var_obs</span><span class="p">))</span>
+
+        <span class="c1"># handle infinite likelihood values</span>
+        <span class="c1"># such values should not completely break the algorithm but either</span>
+        <span class="c1"># be very large negative or very large positive numbers</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">likelihood</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isneginf</span><span class="p">(</span><span class="n">likelihood</span><span class="p">):</span>
+                <span class="k">return</span> <span class="o">-</span><span class="mf">1e10</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mf">1e10</span>
+
+        <span class="k">return</span> <span class="n">likelihood</span></div>
+</div>
+
+
+<div class="viewcode-block" id="GaussianLogLikelihood">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.Likelihoods.GaussianLogLikelihood">[docs]</a>
+<span class="k">class</span> <span class="nc">GaussianLogLikelihood</span><span class="p">():</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The Gaussian log-likelihood class.</span>
+
+<span class="sd">        This class represents the Gaussian log-likelihood function</span>
+<span class="sd">        with its utilities. It is computed as</span>
+
+<span class="sd">        .. math:: L(\\theta | Y) = - \\frac{n}{2}\\ln(2\\pi) - \\frac{n}{2}\\ln(\\sigma^2) - \\frac{1}{2}\\sigma^{-2} \\times \\sum_{i=1}^n (y&#39;_i(\\theta) - y_i)^2</span>
+
+<span class="sd">        where :math:`L(\\cdot)` is the log-likelihood function,</span>
+<span class="sd">        :math:`\\theta` are model parameters, :math:`y_i` are observations,</span>
+<span class="sd">        :math:`\\sigma^2` is the (theoretical) variance of errors or residuals,</span>
+<span class="sd">        :math:`y&#39;_i(\\cdot)` is the :math:`i`-th model output corresponding</span>
+<span class="sd">        to the :math:`i`-th observation.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        threshold : float</span>
+<span class="sd">            The threshold to use, given as a fraction of simulations that</span>
+<span class="sd">            are accepted (the actual likelihood value for the threshold is</span>
+<span class="sd">            inferred during the tuning phase of MLGLUE). The value has to</span>
+<span class="sd">            be in the range (0, 1).</span>
+<span class="sd">        var : float</span>
+<span class="sd">            The (theoretical) error variance of the likelihood function.</span>
+<span class="sd">        weights : 1D array-like of float</span>
+<span class="sd">            The weights of the observations / simulated observation</span>
+<span class="sd">            equivalents. Note that those weights are not checked further</span>
+<span class="sd">            and are just used as provided.</span>
+
+<span class="sd">        Attributes</span>
+<span class="sd">        ---------- </span>
+<span class="sd">        threshold : float</span>
+<span class="sd">            The threshold to use, given as a fraction of simulations that</span>
+<span class="sd">            are accepted (the actual likelihood value for the threshold is</span>
+<span class="sd">            inferred during the tuning phase of MLGLUE). The value has to</span>
+<span class="sd">            be in the range (0, 1).</span>
+<span class="sd">        var : float</span>
+<span class="sd">            The (theoretical) error variance of the likelihood function.</span>
+<span class="sd">        weights : 1D array-like of float</span>
+<span class="sd">            The weights of the observations / simulated observation</span>
+<span class="sd">            equivalents. Note that those weights are not checked further</span>
+<span class="sd">            and are just used as provided.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span> <span class="o">=</span> <span class="n">threshold</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">var</span> <span class="o">=</span> <span class="n">var</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">weights</span>
+
+        <span class="k">return</span>
+
+<div class="viewcode-block" id="GaussianLogLikelihood.likelihood">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.Likelihoods.GaussianLogLikelihood.likelihood">[docs]</a>
+    <span class="k">def</span> <span class="nf">likelihood</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sim</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the Gaussian log-likelihood</span>
+<span class="sd">        </span>
+<span class="sd">        Compute the Gaussian log-likelihood: </span>
+
+<span class="sd">        .. math:: L(\\theta | Y) = - \\frac{n}{2}\\ln(2\\pi) - \\frac{n}{2}\\ln(\\sigma^2) - \\frac{1}{2}\\sigma^{-2} \\times \\sum_{i=1}^n (y&#39;_i(\\theta) - y_i)^2</span>
+
+<span class="sd">        where :math:`L(\\cdot)` is the log-likelihood function,</span>
+<span class="sd">        :math:`\\theta` are model parameters, :math:`y_i` are observations,</span>
+<span class="sd">        :math:`\\sigma^2` is the (theoretical) variance of errors or residuals,</span>
+<span class="sd">        :math:`y&#39;_i(\\cdot)` is the :math:`i`-th model output corresponding</span>
+<span class="sd">        to the :math:`i`-th observation.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        obs : 1D array-like of float</span>
+<span class="sd">            The observations of the system.</span>
+<span class="sd">        sim : 1D array-like of float</span>
+<span class="sd">            The simulated observation equivalents, simulated by the model.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        likelihood : float</span>
+<span class="sd">            The likelihood computed from observations and simulated</span>
+<span class="sd">            observation equivalents.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">obs</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">sim</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;No observations and no simulated values are given!&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">obs</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">sim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;No observations are given!&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">obs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">sim</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;No simulated values are given!&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sim</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">):</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;Length mismatch! Observed values have length </span><span class="si">{}</span><span class="s2"> but &quot;</span>
+                       <span class="s2">&quot; simulated values have length </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">),</span>
+                                                                 <span class="nb">len</span><span class="p">(</span><span class="n">sim</span><span class="p">)))</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">))</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">):</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;Length mismatch! Weights values have length </span><span class="si">{}</span><span class="s2"> but&quot;</span>
+                       <span class="s2">&quot; observed values have length </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">))</span>
+                       <span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span>
+
+        <span class="c1"># calculate the likelihood</span>
+        <span class="n">residuals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">sim</span><span class="p">)</span>
+        <span class="n">residuals</span> <span class="o">*=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span>
+
+        <span class="n">loglike</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">var</span><span class="p">))</span> <span class="o">-</span>\
+                  <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">var</span><span class="p">))</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">residuals</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># handle infinite likelihood values</span>
+        <span class="c1"># such values should not completely break the algorithm but either</span>
+        <span class="c1"># be very large negative or very large positive numbers</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">loglike</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isneginf</span><span class="p">(</span><span class="n">loglike</span><span class="p">):</span>
+                <span class="k">return</span> <span class="o">-</span><span class="mf">1e10</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mf">1e10</span>
+
+        <span class="k">return</span> <span class="n">loglike</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Max Rudolph.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

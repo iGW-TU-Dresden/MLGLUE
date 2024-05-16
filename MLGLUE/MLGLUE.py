@@ -347,13 +347,13 @@ class MLGLUE():
         difference between likelihood values on subsequent levels.
 
         Specifically, the following expression is evaluated for all levels:
-        .. math:: Var[L_{\ell} - L_{\ell - 1}] = Var[L_{\ell}] + Var[L_{\ell - 1}] - 2 Cov[L_{\ell} - L_{\ell - 1}]
+        .. math:: Var[L_{\ell}-L_{\ell-1}]=Var[L_{\ell}]+Var[L_{\ell-1}]-2Cov[L_{\ell}-L_{\ell-1}]
 
         where :math:`L_{\ell}` is the random variable representing
         likelihood values on level :math:`\ell` form the tuning phase.
-        Then, for :math:`Var[L_{\ell} - L_{\ell - 1}]` to decay
-        monotonically, :math:`2 Cov[L_{\ell} - L_{\ell - 1}]` has to be
-        larger than :math:`Var[L_{\ell - 1}]`, which implies that two
+        Then, for :math:`Var[L_{\ell}-L_{\ell-1}]` to decay
+        monotonically, :math:`2Cov[L_{\ell}-L_{\ell-1}]` has to be
+        larger than :math:`Var[L_{\ell-1}]`, which implies that two
         subsequent levels need to be sufficiently correlated.
 
         Parameters
@@ -519,11 +519,11 @@ class MLGLUE():
         subsequent levels.
 
         Specifically, the following expression is evaluated for all levels:
-        .. math:: E[L_{\ell} - L_{\ell - 1}] = E[L_{\ell}] - E[L_{\ell - 1}]
+        .. math:: E[L_{\ell}-L_{\ell-1}]=E[L_{\ell}]-E[L_{\ell-1}]
 
         where :math:`L_{\ell}` is the random variable representing
         likelihood values on level :math:`\ell` form the tuning phase.
-        Then, for :math:`E[L_{\ell} - L_{\ell - 1}]` to decay
+        Then, for :math:`E[L_{\ell}-L_{\ell-1}]` to decay
         monotonically, the difference in the mean values of the likelihoods
         on different levels has to decay.
 

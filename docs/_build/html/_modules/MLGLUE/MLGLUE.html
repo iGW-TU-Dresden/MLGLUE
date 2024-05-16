@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MLGLUE.MLGLUE &mdash; MLGLUE 0.0.5 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=282f96c0"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            MLGLUE
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">MLGLUE</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">MLGLUE</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">MLGLUE.MLGLUE</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for MLGLUE.MLGLUE</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">copy</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">ray</span>
+<span class="kn">from</span> <span class="nn">ray.util.multiprocessing</span> <span class="kn">import</span> <span class="n">Pool</span>
+
+<div class="viewcode-block" id="MLGLUE">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.MLGLUE.MLGLUE">[docs]</a>
+<span class="k">class</span> <span class="nc">MLGLUE</span><span class="p">():</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">model</span><span class="p">,</span>
+            <span class="n">likelihood</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">lower_bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">upper_bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">n_samples</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+            <span class="n">samples</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">tuning</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+            <span class="n">n_levels</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">coarsening_factor</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="n">obs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">thresholds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">multiprocessing</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">n_processors</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">hierarchy_analysis</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">savefigs</span><span class="o">=</span><span class="s2">&quot;my_model&quot;</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The MLGLUE class.</span>
+
+<span class="sd">        This is the basic class of the MLGLUE implementation. It is used to</span>
+<span class="sd">        define all general settings of MLGLUE sampling for a given case</span>
+<span class="sd">        such as the model function, the likelihood function, parameter</span>
+<span class="sd">        samples (or settings for internal sample generation if no samples</span>
+<span class="sd">        are given by the user directly), etc.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        model : Callable</span>
+<span class="sd">            The callable representing the model to which MLGLUE should be</span>
+<span class="sd">            applied. See the Notes section below for further details.</span>
+<span class="sd">        likelihood</span>
+<span class="sd">            An instance of an MLGLUE likelihood object. See the Notes</span>
+<span class="sd">            section below for further details.</span>
+<span class="sd">        lower_bounds : 1D array-like of float</span>
+<span class="sd">            The lower bounds of the uniform distribution over the model</span>
+<span class="sd">            parameters. This attribute is ignored if `samples` are directly</span>
+<span class="sd">            supplied. `lower_bounds` has to have shape (n_parameters,).</span>
+<span class="sd">        upper_bounds : 1D array-like of float</span>
+<span class="sd">            The upper bounds of the uniform distribution over the model</span>
+<span class="sd">            parameters. This attribute is ignored if `samples` are directly</span>
+<span class="sd">            supplied. `upper_bounds` has to have shape (n_parameters,).</span>
+<span class="sd">        n_samples : int</span>
+<span class="sd">            The total number of parameter samples to draw from the uniform</span>
+<span class="sd">            prior distribution. Note that this includes the samples used</span>
+<span class="sd">            for tuning! This attribute is ignored if `samples` are directly</span>
+<span class="sd">            supplied.</span>
+<span class="sd">        samples : (tuple of) 2D array-like of float, optional</span>
+<span class="sd">            The prior parameter samples, which can optionally be supplied.</span>
+<span class="sd">            If `samples` are given, `lower_bounds`, `upper_bounds`, and</span>
+<span class="sd">            `n_samples` are ignored. Default is None. If a 2D array-like,</span>
+<span class="sd">            it is considered the full set of parameter samples, including</span>
+<span class="sd">            the samples used for tuning. If a tuple of 2D array-like, the</span>
+<span class="sd">            first element of the tuple is considered as tuning samples and</span>
+<span class="sd">            the second element as the regular samples. Every 2D array-like</span>
+<span class="sd">            has to have shape (n_samples, n_parameters).</span>
+<span class="sd">        tuning : float</span>
+<span class="sd">            The tuning fraction (0. &lt; `tuning` &lt; 1.). The rounded result</span>
+<span class="sd">            (int(n_samples * tuning) is used to split the samples into the</span>
+<span class="sd">            two parts.</span>
+<span class="sd">        n_levels : int</span>
+<span class="sd">            The number of levels in the hierarchy.</span>
+<span class="sd">        coarsening_factor : float</span>
+<span class="sd">            For the case of a geometric series of resolutions in the</span>
+<span class="sd">            hierarchy, `coarsening_factor` represents the coarsening of the</span>
+<span class="sd">            resolution when going from level (l) to level (l-1).</span>
+<span class="sd">        obs : 1D array-like of float</span>
+<span class="sd">            The observations for which the model simulates values.</span>
+<span class="sd">        thresholds : 1D array-like of float, optional</span>
+<span class="sd">            The level-dependent likelihood thresholds to use. Has to have</span>
+<span class="sd">            shape (n_levels,). If `thresholds` is given, the tuning phase</span>
+<span class="sd">            is skipped. Note that this has an effect on the definition of</span>
+<span class="sd">            the parameter samples! Default is None.</span>
+<span class="sd">        multiprocessing : bool</span>
+<span class="sd">            Whether to use multiprocessing using the Ray package or not.</span>
+<span class="sd">        n_processors : int, optional</span>
+<span class="sd">            The number of CPUs to use if `multiprocessing` is enabled. By</span>
+<span class="sd">            default, all processors are used (`n_processors`=None).</span>
+<span class="sd">        savefigs</span>
+<span class="sd">            Whether to save variance analysis figures or not. If None,</span>
+<span class="sd">            figures will not be saved. If str, figures will be saved as png</span>
+<span class="sd">            with the str as identifier.</span>
+<span class="sd">        hiearchy_analysis : bool</span>
+<span class="sd">            Whether hiararchy analysis is strict or not. If not strict </span>
+<span class="sd">            (False), results of variance and mean analysis are printed to</span>
+<span class="sd">            the screen but MLGLUE continues independently of the result. If</span>
+<span class="sd">            strict (True), results are also printed to the screen but</span>
+<span class="sd">            MLGLUE is stopped if the variances and mean values between</span>
+<span class="sd">            levels (l-1, l) is larger than on level (l) and / or if the</span>
+<span class="sd">            variances or mean values between levels do not decay</span>
+<span class="sd">            monotonically.</span>
+
+<span class="sd">        Attributes</span>
+<span class="sd">        ----------</span>
+<span class="sd">        model : Callable</span>
+<span class="sd">            The callable representing the model to which MLGLUE should be</span>
+<span class="sd">            applied. See the Notes section below for further details.</span>
+<span class="sd">        likelihood</span>
+<span class="sd">            An instance of an MLGLUE likelihood object. See the Notes</span>
+<span class="sd">            section below for further details.</span>
+<span class="sd">        lower_bounds : 1D array-like of float</span>
+<span class="sd">            The lower bounds of the uniform distribution over the model</span>
+<span class="sd">            parameters. This attribute is ignored if `samples` are directly</span>
+<span class="sd">            supplied. `lower_bounds` has to have shape (n_parameters,).</span>
+<span class="sd">        upper_bounds : 1D array-like of float</span>
+<span class="sd">            The upper bounds of the uniform distribution over the model</span>
+<span class="sd">            parameters. This attribute is ignored if `samples` are directly</span>
+<span class="sd">            supplied. `upper_bounds` has to have shape (n_parameters,).</span>
+<span class="sd">        n_samples : int</span>
+<span class="sd">            The total number of parameter samples to draw from the uniform</span>
+<span class="sd">            prior distribution. Note that this includes the samples used</span>
+<span class="sd">            for tuning! This attribute is ignored if `samples` are directly</span>
+<span class="sd">            supplied.</span>
+<span class="sd">        samples : 2D array-like of float</span>
+<span class="sd">            The prior parameter samples, which can optionally be supplied.</span>
+<span class="sd">            Note that this includes the samples used for tuning! If</span>
+<span class="sd">            `samples` are given, `lower_bounds`, `upper_bounds`, and</span>
+<span class="sd">            `n_samples` are ignored. Has to have shape</span>
+<span class="sd">            (n_samples, n_parameters).</span>
+<span class="sd">        samples_tuning : 2D array-like of float</span>
+<span class="sd">            The (prior) parameter samples used for tuning. If</span>
+<span class="sd">            `samples_tuning` are given, `lower_bounds`, `upper_bounds`, and</span>
+<span class="sd">            `n_samples` are ignored. Has to have shape (n_samples,</span>
+<span class="sd">            n_parameters).</span>
+<span class="sd">        samples_tuning : 2D array-like of float</span>
+<span class="sd">            The (prior) parameter samples used for sampling. If</span>
+<span class="sd">            `samples_sampling` are given, `lower_bounds`, `upper_bounds`,</span>
+<span class="sd">            and `n_samples` are ignored. Has to have shape (n_samples,</span>
+<span class="sd">            n_parameters).</span>
+<span class="sd">        tuning : float</span>
+<span class="sd">            The tuning fraction (0. &lt; `tuning` &lt; 1.). The rounded result</span>
+<span class="sd">            (int(n_samples * tuning) is used to split the samples into the</span>
+<span class="sd">            two parts.</span>
+<span class="sd">        n_levels : int</span>
+<span class="sd">            The number of levels in the hierarchy.</span>
+<span class="sd">        coarsening_factor : float</span>
+<span class="sd">            For the case of a geometric series of resolutions in the</span>
+<span class="sd">            hierarchy, `coarsening_factor` represents the coarsening of the</span>
+<span class="sd">            resolution when going from level (l) to level (l-1).</span>
+<span class="sd">        obs : 1D array-like of float</span>
+<span class="sd">            The observations for which the model simulates values.</span>
+<span class="sd">        thresholds : 1D array-like of float</span>
+<span class="sd">            The level-dependent likelihood thresholds to use. Has to have</span>
+<span class="sd">            shape (n_levels,). If `thresholds` is given, the tuning phase</span>
+<span class="sd">            is skipped. Note that this has an effect on the definition of</span>
+<span class="sd">            the parameter samples! Default is None.</span>
+<span class="sd">        multiprocessing : bool</span>
+<span class="sd">            Whether to use multiprocessing using the Ray package or not.</span>
+<span class="sd">        n_processors : int</span>
+<span class="sd">            The number of CPUs to use if `multiprocessing` is enabled. By</span>
+<span class="sd">            default, all processors are used (`n_processors`=None).</span>
+<span class="sd">        savefigs</span>
+<span class="sd">            Whether to save variance analysis figures or not. If None,</span>
+<span class="sd">            figures will not be saved. If str, figures will be saved as png</span>
+<span class="sd">            with the str as identifier.</span>
+<span class="sd">        hiearchy_analysis : bool</span>
+<span class="sd">            Whether hiararchy analysis is strict or not. If not strict </span>
+<span class="sd">            (False), results of variance and mean analysis are printed to</span>
+<span class="sd">            the screen but MLGLUE continues independently of the result. If</span>
+<span class="sd">            strict (True), results are also printed to the screen but</span>
+<span class="sd">            MLGLUE is stopped if the variances and mean values between</span>
+<span class="sd">            levels (l-1, l) is larger than on level (l) and / or if the</span>
+<span class="sd">            variances or mean values between levels do not decay</span>
+<span class="sd">            monotonically.</span>
+<span class="sd">        selected_samples : 2D array-like of float</span>
+<span class="sd">            The array of selected samples that are accepted on the highest</span>
+<span class="sd">            level; has individual samples as rows and variables / model</span>
+<span class="sd">            parameters as columns.</span>
+<span class="sd">        results : 2D array-like of float</span>
+<span class="sd">            Holds simulated observation equivalents corresponding to all</span>
+<span class="sd">            posterior samples; has shape (len(selected_samples), len(obs)).</span>
+<span class="sd">        results_analysis : 3D array-like of float</span>
+<span class="sd">            Holds simulated observation equivalents corresponding to all</span>
+<span class="sd">            posterior samples on all levels; has shape (n_levels,</span>
+<span class="sd">            len(selected_samples), len(obs)).</span>
+<span class="sd">        results_analysis_tuning : 3D array-like of float</span>
+<span class="sd">            Holds simulated observation equivalents corresponding to all</span>
+<span class="sd">            tuning samples (except for tuning samples that result in an</span>
+<span class="sd">            error or NaN returned by the model callable) on all levels;</span>
+<span class="sd">            has the tuning samples in the first dimension, the levels in</span>
+<span class="sd">            the second dimension, and the simulated values in the third</span>
+<span class="sd">            dimension.</span>
+<span class="sd">        likelihoods : 1D array-like of float</span>
+<span class="sd">            The likelihood values correpsonding to the selected samples.</span>
+<span class="sd">        normalized_likelihoods : 1D array-like of float</span>
+<span class="sd">            Normalized likelihood values used for the computation of</span>
+<span class="sd">            uncertainty estimates.</span>
+<span class="sd">        likelihoods_tuning : 2D array-like of float</span>
+<span class="sd">            The likelihood values on all levels for all tuning samples</span>
+<span class="sd">            (except for tuning samples that result in an error or NaN</span>
+<span class="sd">            returned by the model callable) on all levels; has the levels</span>
+<span class="sd">            in the rows and tuning samples in columns.</span>
+<span class="sd">        highest_level_calls : 1D array-like of int</span>
+<span class="sd">            A list with the number of ones equal to the number of calls</span>
+<span class="sd">            made to the model on the highest level. This is implemented</span>
+<span class="sd">            like that currently as a list can be shared across processes / </span>
+<span class="sd">            workers. A single variable (e.g., an int) could not be shared</span>
+<span class="sd">            this way. This will be improved in the future.        </span>
+<span class="sd">        </span>
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        The callable for the `model` attribute has to accept the following</span>
+<span class="sd">        arguments: parameters (1D list-like of floats representing model</span>
+<span class="sd">        parameters), level (0-based integer representing the level index),</span>
+<span class="sd">        n_levels (integer representing the total number of levels), obs (1D</span>
+<span class="sd">        list-like of floats representing observations), likelihood (the</span>
+<span class="sd">        MLGLUE likelihood function). The callable has to return a float</span>
+<span class="sd">        corresponding to the likelihood of the given parameter sample and</span>
+<span class="sd">        return simulation results (these results can either be only</span>
+<span class="sd">        simulated observation equivalents or other simulation results; if</span>
+<span class="sd">        other simulation results are given as well, the corresponding</span>
+<span class="sd">        weight in the likelihood function should be set to zero). The</span>
+<span class="sd">        likelihood value should be computed using a likelihood function</span>
+<span class="sd">        implemented in this package; user-defined likelihood functions can</span>
+<span class="sd">        be used as well but are not tested. The simulated values have to be</span>
+<span class="sd">        of a type that can be appended to a list but do not have to have a</span>
+<span class="sd">        certain structure otherwise.</span>
+<span class="sd">        The object instance for the `likelihood` attribute should then have</span>
+<span class="sd">        a `likelihood` method (see the Examples section for further</span>
+<span class="sd">        details). The likelihood method has to accept the following</span>
+<span class="sd">        arguments: obs (1D list-like of floats representing observations),</span>
+<span class="sd">        sim (1D list-like of floats representing simulated observation</span>
+<span class="sd">        equivalents). Using a likelihood included in the present package</span>
+<span class="sd">        already ensures this structure.</span>
+<span class="sd">        If the model function only has one level, it should be the finest /</span>
+<span class="sd">        target level.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">likelihood</span> <span class="o">=</span> <span class="n">likelihood</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lower_bounds</span> <span class="o">=</span> <span class="n">lower_bounds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">upper_bounds</span> <span class="o">=</span> <span class="n">upper_bounds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_samples</span> <span class="o">=</span> <span class="n">n_samples</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples</span> <span class="o">=</span> <span class="n">samples</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples_tuning</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples_sampling</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tuning</span> <span class="o">=</span> <span class="n">tuning</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thresholds</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span> <span class="o">=</span> <span class="n">n_levels</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coarsening_factor</span> <span class="o">=</span> <span class="n">coarsening_factor</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">obs</span> <span class="o">=</span> <span class="n">obs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">multiprocessing</span> <span class="o">=</span> <span class="n">multiprocessing</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_processors</span> <span class="o">=</span> <span class="n">n_processors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hierarchy_analysis</span> <span class="o">=</span> <span class="n">hierarchy_analysis</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">savefigs</span> <span class="o">=</span> <span class="n">savefigs</span>
+
+        <span class="c1"># initialize output data structures</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">normalized_likelihoods</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="p">[]</span> <span class="c1"># --&gt; this holds only the final results (i.e., from the finest level)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selected_samples</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">likelihoods</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">likelihoods_tuning</span> <span class="o">=</span> <span class="p">[[]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results_analysis</span> <span class="o">=</span> <span class="p">[[]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span><span class="p">)]</span> <span class="c1"># --&gt; holds results from all levels during sampling</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results_analysis_tuning</span> <span class="o">=</span> <span class="p">[[]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span><span class="p">)]</span> <span class="c1"># --&gt; holds results from all levels during tuning</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">highest_level_calls</span> <span class="o">=</span> <span class="p">[]</span> <span class="c1"># --&gt; holds identifiers for highest level calls (1 corresponds to a highest level call)</span>
+
+        <span class="k">if</span> <span class="n">thresholds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">thresholds</span> <span class="o">=</span> <span class="n">thresholds</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">thresholds_predefined</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">thresholds</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">thresholds_predefined</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">return</span>
+    
+<div class="viewcode-block" id="MLGLUE.MLGLUE_tuning">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.MLGLUE.MLGLUE.MLGLUE_tuning">[docs]</a>
+    <span class="k">def</span> <span class="nf">MLGLUE_tuning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">samples</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Single-core MLGLUE tuning phase.</span>
+
+<span class="sd">        Perform the tuning phase of MLGLUE without using multiprocessing /</span>
+<span class="sd">        Ray.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        samples : 2D list-like of float</span>
+<span class="sd">            The parameter samples with which to perform tuning. Has to have</span>
+<span class="sd">            the individual samples as rows and variables / model parameters</span>
+<span class="sd">            as columns.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        This is implemented as an instance method; it cannot be used</span>
+<span class="sd">        independently of an MLGLUE instance. Therefore, results are not</span>
+<span class="sd">        returned by this function but are rather stored in the class /</span>
+<span class="sd">        instance attributes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># set the internal level index to 0 (i.e., start sample evaluation</span>
+        <span class="c1"># on level 0)</span>
+        <span class="n">run_id</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># self.likelihoods_tuning[level_].append(likelihood_)</span>
+        <span class="c1"># self.results_analysis_tuning[level_].append(results)</span>
+
+        <span class="c1"># iterate over all samples</span>
+        <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="n">sample_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluate_sample_tuning</span><span class="p">(</span>
+                <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span>
+                <span class="n">run_id</span><span class="o">=</span><span class="n">run_id</span>
+            <span class="p">)</span>
+
+            <span class="c1"># if there was an error with on any level, sample_result is</span>
+            <span class="c1"># None. in that case, continue to the next sample</span>
+            <span class="k">if</span> <span class="n">sample_result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># increment the run_id</span>
+                <span class="n">run_id</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">continue</span>
+            
+            <span class="c1"># otherwise, handle the results returned above</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># the order of elements in the sample_result tuple is:</span>
+                <span class="c1"># likelihoods_sample, results_analysis_tuning_sample</span>
+
+                <span class="c1"># append level-dependent results to internal data</span>
+                <span class="c1"># structures</span>
+                <span class="k">for</span> <span class="n">level_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span><span class="p">):</span>
+                    <span class="c1"># append likelihoods</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">likelihoods_tuning</span><span class="p">[</span><span class="n">level_</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">sample_result</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">level_</span><span class="p">]</span>
+                    <span class="p">)</span>
+                    <span class="c1"># append results</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">results_analysis_tuning</span><span class="p">[</span><span class="n">level_</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">sample_result</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">level_</span><span class="p">]</span>
+                    <span class="p">)</span>
+
+                <span class="c1"># increment the run_id</span>
+                <span class="n">run_id</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">return</span></div>
+
+
+<div class="viewcode-block" id="MLGLUE.analyze_variances_likelihoods">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.MLGLUE.MLGLUE.analyze_variances_likelihoods">[docs]</a>
+    <span class="k">def</span> <span class="nf">analyze_variances_likelihoods</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raise_error</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Analyze likelihood variances.</span>
+
+<span class="sd">        Analyze the relationships between levels in terms of variances:</span>
+<span class="sd">        (1) variances of likelihood values on each individual level (2)</span>
+<span class="sd">        covariances of likelihoods across levels (3) variances of the</span>
+<span class="sd">        difference between likelihood values on subsequent levels.</span>
+
+<span class="sd">        Specifically, the following expression is evaluated for all levels:</span>
+<span class="sd">        .. math:: Var[L_{\ell}-L_{\ell-1}]=Var[L_{\ell}]+Var[L_{\ell-1}]-2Cov[L_{\ell}-L_{\ell-1}]</span>
+
+<span class="sd">        where :math:`L_{\ell}` is the random variable representing</span>
+<span class="sd">        likelihood values on level :math:`\ell` form the tuning phase.</span>
+<span class="sd">        Then, for :math:`Var[L_{\ell}-L_{\ell-1}]` to decay</span>
+<span class="sd">        monotonically, :math:`2Cov[L_{\ell}-L_{\ell-1}]` has to be</span>
+<span class="sd">        larger than :math:`Var[L_{\ell-1}]`, which implies that two</span>
+<span class="sd">        subsequent levels need to be sufficiently correlated.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        raise_error : bool</span>
+<span class="sd">            Whether variance analysis is strict or not. If not strict </span>
+<span class="sd">            (False), results of variance analysis are printed to the screen</span>
+<span class="sd">            but MLGLUE continues independently of the result. If strict</span>
+<span class="sd">            (True), results are also printed to the screen but MLGLUE is</span>
+<span class="sd">            stopped if the variances between levels (l-1, l) is larger than</span>
+<span class="sd">            on level (l) and / or if the variances between levels do not</span>
+<span class="sd">            decay monotonically.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># transform list of likelihoods to numpy array to be able to use</span>
+        <span class="c1"># array operations later</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">likelihoods_tuning</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">likelihoods_tuning</span><span class="p">)</span>
+
+        <span class="c1"># get number of likelihoods in every level</span>
+        <span class="c1"># this number is identical on every level</span>
+        <span class="n">n_vals</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">likelihoods_tuning</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:])</span>
+
+        <span class="c1"># compute the variance of the likelihood values on each level</span>
+        <span class="n">vars_within_levels</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">likelihoods_tuning</span><span class="p">:</span>
+            <span class="c1"># calculate the variance within the level</span>
+            <span class="n">var_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="c1"># append variance to list</span>
+            <span class="n">vars_within_levels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">var_</span><span class="p">)</span>
+
+        <span class="c1"># calculate covariance between / across subsequent levels</span>
+        <span class="n">covs_cross_levels</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">cov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cov</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">likelihoods_tuning</span><span class="p">,</span>
+            <span class="n">rowvar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">covs_cross_levels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cov</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="c1"># calculate correlation between / across subsequent levels</span>
+        <span class="n">corrs_cross_levels</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">corr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">corrcoef</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">likelihoods_tuning</span><span class="p">,</span>
+            <span class="n">rowvar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">corrs_cross_levels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">corr</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="c1"># calculate right hand side of expression</span>
+        <span class="n">rhs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="c1"># calculate rhs</span>
+            <span class="n">rhs_</span> <span class="o">=</span> <span class="n">vars_within_levels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">vars_within_levels</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> \
+                <span class="mf">2.</span> <span class="o">*</span> <span class="n">covs_cross_levels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="c1"># append rhs to list</span>
+            <span class="n">rhs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rhs_</span><span class="p">)</span>
+
+        <span class="c1"># print correlation between subsequent levels</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">Results of variance analysis: &quot;</span> <span class="o">+</span> 
+            <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Correlation between subsequent levels (from lowest to&quot;</span> <span class="o">+</span> 
+            <span class="s2">&quot; highest level):&quot;</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">corrs_cross_levels</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   </span><span class="si">{:1.5f}</span><span class="s2">   (level </span><span class="si">{}</span><span class="s2">, level </span><span class="si">{}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">corrs_cross_levels</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">i</span><span class="p">,</span>
+                <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Note: those values should INCREASE with increasing level &quot;</span> <span class="o">+</span>
+              <span class="s2">&quot;indices!&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># print variances on different levels</span>
+        <span class="nb">print</span><span class="p">(</span> 
+            <span class="s2">&quot;Variances of likelihoods on all levels (from lowest to&quot;</span> <span class="o">+</span> 
+            <span class="s2">&quot; highest level):&quot;</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">vars_within_levels</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   </span><span class="si">{:1.5f}</span><span class="s2">   (level </span><span class="si">{}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">vars_within_levels</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">i</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Note: those values should be approximately constant &quot;</span> <span class="o">+</span> 
+              <span class="s2">&quot;across all levels!&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># initialize list to store booleans representing whether the</span>
+        <span class="c1"># variance inequality holds or not</span>
+        <span class="n">ineq</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># initialize list to store booleans representing whether the</span>
+        <span class="c1"># cross-level variance decays</span>
+        <span class="n">decay</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># iterate over levels to check variance inequality</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">vars_within_levels</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">rhs</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The var. inequality holds between levels &quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> and </span><span class="si">{}</span><span class="s2">: </span><span class="si">{:1.5f}</span><span class="s2"> &gt;= </span><span class="si">{:1.5e}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                          <span class="n">i</span><span class="p">,</span>
+                          <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                          <span class="n">vars_within_levels</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span>
+                          <span class="n">rhs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="n">ineq</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The var. inequality DOES NOT hold between levels &quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> and </span><span class="si">{}</span><span class="s2">: </span><span class="si">{:1.5f}</span><span class="s2"> &gt;//= </span><span class="si">{:1.5e}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                          <span class="n">i</span><span class="p">,</span>
+                          <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                          <span class="n">vars_within_levels</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span>
+                          <span class="n">rhs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="n">ineq</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># iterate over levels to check cross-level variance decay</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span> <span class="o">-</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">rhs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">rhs</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="n">decay</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">decay</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ineq</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">The variance inequality does not hold for all&quot;</span>
+                       <span class="s2">&quot;two subsequent levels!&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">The variance inequality holds between all two &quot;</span>
+                      <span class="s2">&quot;subsequent levels!&quot;</span><span class="p">)</span>
+        
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">decay</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;The cross-level variance does not decay &quot;</span>
+                       <span class="s2">&quot;monotonically!&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The cross-level variance decays monotonically!&quot;</span><span class="p">)</span>
+        
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">raise_error</span><span class="p">:</span>
+                <span class="k">raise</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="k">return</span></div>
+
+
+<div class="viewcode-block" id="MLGLUE.analyze_means_likelihoods">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.MLGLUE.MLGLUE.analyze_means_likelihoods">[docs]</a>
+    <span class="k">def</span> <span class="nf">analyze_means_likelihoods</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raise_error</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Analyze likelihood mean values.</span>
+
+<span class="sd">        Analyze the relationships between levels in terms of mean values:</span>
+<span class="sd">        (1) mean values of likelihood values on each individual level (2)</span>
+<span class="sd">        mean values of the difference between likelihood values on</span>
+<span class="sd">        subsequent levels.</span>
+
+<span class="sd">        Specifically, the following expression is evaluated for all levels:</span>
+<span class="sd">        .. math:: E[L_{\ell}-L_{\ell-1}]=E[L_{\ell}]-E[L_{\ell-1}]</span>
+
+<span class="sd">        where :math:`L_{\ell}` is the random variable representing</span>
+<span class="sd">        likelihood values on level :math:`\ell` form the tuning phase.</span>
+<span class="sd">        Then, for :math:`E[L_{\ell}-L_{\ell-1}]` to decay</span>
+<span class="sd">        monotonically, the difference in the mean values of the likelihoods</span>
+<span class="sd">        on different levels has to decay.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        raise_error : bool</span>
+<span class="sd">            Whether mean value analysis is strict or not. If not strict </span>
+<span class="sd">            (False), results of mean value analysis are printed to the</span>
+<span class="sd">            screen but MLGLUE continues independently of the result. If</span>
+<span class="sd">            strict (True), results are also printed to the screen but</span>
+<span class="sd">            MLGLUE is stopped if the mean values of the difference between</span>
+<span class="sd">            likelihood values on levels (l-1, l) are larger than on level</span>
+<span class="sd">            (l) and / or if the mean values of the difference between</span>
+<span class="sd">            likelihood values do not decay monotonically.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># transform list of likelihoods to numpy array to be able to use</span>
+        <span class="c1"># array operations later</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">likelihoods_tuning</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">likelihoods_tuning</span><span class="p">)</span>
+
+        <span class="c1"># get number of likelihoods in every level</span>
+        <span class="c1"># this number is identical on every level</span>
+        <span class="n">n_vals</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">likelihoods_tuning</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:])</span>
+
+        <span class="c1"># compute mean value of the likelihoods on each level</span>
+        <span class="n">means_within_levels</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">likelihoods_tuning</span><span class="p">:</span>
+            <span class="c1"># calculate the variance within the level</span>
+            <span class="n">mean_</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+            <span class="c1"># append variance to list</span>
+            <span class="n">means_within_levels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mean_</span><span class="p">)</span>
+
+        <span class="c1"># calculate mean of difference between likelihood values on</span>
+        <span class="c1"># subsequent levels</span>
+        <span class="n">rhs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">rhs_</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">means_within_levels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">means_within_levels</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+            <span class="n">rhs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rhs_</span><span class="p">)</span>
+
+        <span class="c1"># print mean values of differences of likelihoods between</span>
+        <span class="c1"># subsequent levels</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">Results of mean value analysis: &quot;</span> <span class="o">+</span> 
+            <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Mean values of the difference between likelihoods on &quot;</span>
+            <span class="s2">&quot;subsequent levels (from lowest to highest level):&quot;</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rhs</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   </span><span class="si">{:1.5f}</span><span class="s2">   (level </span><span class="si">{}</span><span class="s2">, level </span><span class="si">{}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">rhs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">i</span><span class="p">,</span>
+                <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Note: those values should DECREASE with increasing level &quot;</span> <span class="o">+</span>
+              <span class="s2">&quot;indices!&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># print mean values of likelihoods on all levels</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="s2">&quot;Mean values of the likelihoods on all levels (from lowest &quot;</span> <span class="o">+</span>
+            <span class="s2">&quot;highest level):&quot;</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">means_within_levels</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   </span><span class="si">{:1.5f}</span><span class="s2">   (level </span><span class="si">{}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">means_within_levels</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">i</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Note: those values should be approximately constant &quot;</span> <span class="o">+</span> 
+              <span class="s2">&quot;across all levels!&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">ineq</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">decay</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># iterate over levels to check conditions</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">means_within_levels</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">rhs</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The mean value ineq. holds between levels &quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> and </span><span class="si">{}</span><span class="s2">: </span><span class="si">{:1.5f}</span><span class="s2"> &gt;= </span><span class="si">{:1.5e}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                          <span class="n">i</span><span class="p">,</span>
+                          <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                          <span class="n">means_within_levels</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span>
+                          <span class="n">rhs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="n">ineq</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The mean value ineq. DOES NOT hold between levels &quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> and </span><span class="si">{}</span><span class="s2">: </span><span class="si">{:1.5f}</span><span class="s2"> &gt;//= </span><span class="si">{:1.5e}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                          <span class="n">i</span><span class="p">,</span>
+                          <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                          <span class="n">means_within_levels</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span>
+                          <span class="n">rhs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="n">ineq</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># iterate over levels to check cross-level mean value decay</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span> <span class="o">-</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">rhs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">rhs</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="n">decay</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">decay</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ineq</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">The variance inequality does not hold for all&quot;</span>
+                       <span class="s2">&quot;two subsequent levels!&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">The variance inequality holds between all two &quot;</span>
+                      <span class="s2">&quot;subsequent levels!&quot;</span><span class="p">)</span>
+        
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">decay</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;The cross-level variance does not decay &quot;</span>
+                       <span class="s2">&quot;monotonically!&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The cross-level variance decays monotonically!&quot;</span><span class="p">)</span>
+        
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">raise_error</span><span class="p">:</span>
+                <span class="k">raise</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="k">return</span></div>
+
+
+<div class="viewcode-block" id="MLGLUE.calculate_thresholds">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.MLGLUE.MLGLUE.calculate_thresholds">[docs]</a>
+    <span class="k">def</span> <span class="nf">calculate_thresholds</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Calculate likelihood thresholds</span>
+<span class="sd">        </span>
+<span class="sd">        Calculate the thresholds according to the threshold fraction given</span>
+<span class="sd">        by the user as a class attribute.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">level</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">likelihoods_tuning</span><span class="p">:</span>
+            <span class="n">threshold</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="n">level</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">likelihood</span><span class="o">.</span><span class="n">threshold</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">thresholds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">threshold</span><span class="p">)</span>
+            <span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">The calculated thresholds are: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thresholds</span><span class="p">))</span>
+
+        <span class="k">return</span></div>
+
+    
+<div class="viewcode-block" id="MLGLUE.MLGLUE_sampling">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.MLGLUE.MLGLUE.MLGLUE_sampling">[docs]</a>
+    <span class="k">def</span> <span class="nf">MLGLUE_sampling</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">samples</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Single-core MLGLUE sampling phase.</span>
+
+<span class="sd">        Perform the sampling phase of MLGLUE without using multiprocessing</span>
+<span class="sd">        / Ray.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        samples : 2D list-like of float</span>
+<span class="sd">            The parameter samples with which to perform sampling. Has to</span>
+<span class="sd">            have the individual samples as rows and variables / model</span>
+<span class="sd">            parameters as columns.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        This is implemented as an instance method; it cannot be used</span>
+<span class="sd">        independently of an MLGLUE instance. Therefore, results are not</span>
+<span class="sd">        returned by this function but are rather stored in the class /</span>
+<span class="sd">        instance attributes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># set the internal level index to 0 (i.e., start sample evaluation</span>
+        <span class="c1"># on level 0)</span>
+        <span class="n">run_id</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># iterate over all samples</span>
+        <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="c1"># evaluate the current sample</span>
+            <span class="n">sample_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluate_sample</span><span class="p">(</span>
+                <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span>
+                <span class="n">run_id</span><span class="o">=</span><span class="n">run_id</span>
+                <span class="p">)</span>
+            
+            <span class="c1"># if the sample is not finally accepted on the highest level,</span>
+            <span class="c1"># continue to the next sample</span>
+            <span class="k">if</span> <span class="n">sample_result</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+                <span class="c1"># append the identifier for a highest-level model call</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">highest_level_calls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sample_result</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+                <span class="c1"># increment the run_id</span>
+                <span class="n">run_id</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">continue</span>
+            
+            <span class="c1"># if the sample was accepted, handle the results returned above</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># the order of elements in the sample_result tuple is:</span>
+                <span class="c1"># sample, likelihood_, results, results_analysis_sample,</span>
+                <span class="c1"># highest_level_call</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">selected_samples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sample_result</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">likelihoods</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sample_result</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sample_result</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">highest_level_calls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sample_result</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+
+                <span class="c1"># append level-dependent results to internal data structure</span>
+                <span class="k">for</span> <span class="n">level_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">results_analysis</span><span class="p">[</span><span class="n">level_</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">sample_result</span><span class="p">[</span><span class="mi">3</span><span class="p">][</span><span class="n">level_</span><span class="p">]</span>
+                    <span class="p">)</span>
+
+                <span class="c1"># increment the run_id</span>
+                <span class="n">run_id</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">return</span></div>
+
+
+<div class="viewcode-block" id="MLGLUE.evaluate_sample">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.MLGLUE.MLGLUE.evaluate_sample">[docs]</a>
+    <span class="k">def</span> <span class="nf">evaluate_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">,</span> <span class="n">run_id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Multiprocessing MLGLUE sampling utility.</span>
+
+<span class="sd">        Evaluate a single parameter sample with the MLGLUE hierarchy. This</span>
+<span class="sd">        design allows for multiprocessing (using Ray).</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        sample : 1D list-like of float</span>
+<span class="sd">            The parameter sample which is evaluated. Each element has to</span>
+<span class="sd">            represent an individual model parameter. Note that the order of</span>
+<span class="sd">            the elements has to correspond to the order of model parameters</span>
+<span class="sd">            in the model callable.</span>
+<span class="sd">        run_id : int or str</span>
+<span class="sd">            A run identifier in the form of an integer or string (the value</span>
+<span class="sd">            of run_id is converted to a str later in any case). The value</span>
+<span class="sd">            of run_id is also passed to the model callable, which is</span>
+<span class="sd">            especially relevant if each model run is associated with a</span>
+<span class="sd">            corresponding individual working directory. Then this directory</span>
+<span class="sd">            can be named including the run_id value. This resolves problems</span>
+<span class="sd">            for multiprocessing when multiple such individual directories</span>
+<span class="sd">            are present in the same parent directory.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        sample : 1D list-like of float</span>
+<span class="sd">            The parameter sample which was evaluated.</span>
+<span class="sd">        likelihood_ : float</span>
+<span class="sd">            The likelihood value on the highest level corresponding to the</span>
+<span class="sd">            parameter sample which was evaluated.</span>
+<span class="sd">        results : 1D list-like of float</span>
+<span class="sd">            The simulation results (at least all simulated observation</span>
+<span class="sd">            equivalents) on the highest level corresponding to the sample</span>
+<span class="sd">            which was evaluated.</span>
+<span class="sd">        results_analysis_sample : 2D list-like of float</span>
+<span class="sd">            The simulation results (at least all simulated observation</span>
+<span class="sd">            equivalents) on all levels corresponding to the sample which</span>
+<span class="sd">            was evaluated. Has the levels in rows and the individual</span>
+<span class="sd">            results in columns.</span>
+<span class="sd">        highest_level_call : int</span>
+<span class="sd">            An identifier if the highest level model has been called (1) or</span>
+<span class="sd">            not (0) using the evaluated parameter sample. It may happen</span>
+<span class="sd">            that a parameter sample reaches the highest level model but is</span>
+<span class="sd">            not accepted after running the model with that sample. Such</span>
+<span class="sd">            cases should be minimized for MLGLUE to have optimal</span>
+<span class="sd">            efficiency.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        All returns are returned together as a tuple.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># set the call of the model on the highest level for the sample to</span>
+        <span class="c1"># False (0)</span>
+        <span class="n">highest_level_call</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># set the internal level index to 0 (i.e., start sample evaluation</span>
+        <span class="c1"># on level 0)</span>
+        <span class="n">level_</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># initialize internal data structures</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">results_analysis_sample</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># evaluate the model on level 0 using the given parameter sample</span>
+        <span class="c1"># and using the model callable from the corresponding instance</span>
+        <span class="c1"># attribute</span>
+        <span class="n">likelihood_</span><span class="p">,</span> <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span>
+            <span class="n">parameters</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span>
+            <span class="n">level</span><span class="o">=</span><span class="n">level_</span><span class="p">,</span>
+            <span class="n">n_levels</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span><span class="p">,</span>
+            <span class="n">obs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span>
+            <span class="n">likelihood</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">likelihood</span><span class="p">,</span>
+            <span class="n">run_id</span><span class="o">=</span><span class="n">run_id</span>
+            <span class="p">)</span>
+
+        <span class="c1"># if something went wrong (i.e., the model either returned None or</span>
+        <span class="c1"># the initial value of results is still None), return None to</span>
+        <span class="c1"># signal that evaluation for this sample was not successful. in</span>
+        <span class="c1"># that case, the next sample is considered by the perform_MLGLUE</span>
+        <span class="c1"># method.</span>
+        <span class="k">if</span> <span class="n">results</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># if results is not None (i.e., the model returned the expected</span>
+        <span class="c1"># results), start passing the sample through the model hierarchy</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># append the results from the lowest level call to a list which</span>
+            <span class="c1"># can be accessed by the user for further analysis</span>
+            <span class="n">results_analysis_sample</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+
+            <span class="c1"># initialize a variable to handle level indices</span>
+            <span class="n">level_checker</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="c1"># iterate over the higher levels</span>
+            <span class="k">for</span> <span class="n">level__</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span><span class="p">):</span>
+                <span class="c1"># check if the likelihood from the next coarser level is</span>
+                <span class="c1"># above the corresponding level-dependent threshold</span>
+                <span class="n">level_checker</span> <span class="o">=</span> <span class="n">level__</span>
+                <span class="c1"># if the likelihood is not None and is above the level-</span>
+                <span class="c1"># dependent threshold, continue with the sample evaluation</span>
+                <span class="k">if</span> <span class="n">likelihood_</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> \
+                    <span class="ow">and</span> <span class="n">likelihood_</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thresholds</span><span class="p">[</span><span class="n">level__</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]:</span>
+                    
+                    <span class="c1"># if this already was a call to the model on the</span>
+                    <span class="c1"># highest level, set the variable to 1 (True)</span>
+                    <span class="k">if</span> <span class="n">level__</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="n">highest_level_call</span> <span class="o">=</span> <span class="mi">1</span>
+                    
+                    <span class="c1"># if the likelihood was above a threshold in the lower</span>
+                    <span class="c1"># level, go up one level and compute the likelihood</span>
+                    <span class="c1"># again</span>
+                    <span class="n">likelihood_</span><span class="p">,</span> <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span>
+                        <span class="n">parameters</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span>
+                        <span class="n">level</span><span class="o">=</span><span class="n">level__</span><span class="p">,</span>
+                        <span class="n">n_levels</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span><span class="p">,</span>
+                        <span class="n">obs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span>
+                        <span class="n">likelihood</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">likelihood</span><span class="p">,</span>
+                        <span class="n">run_id</span><span class="o">=</span><span class="n">run_id</span>
+                        <span class="p">)</span>
+
+                    <span class="c1"># append the model results to the analysis data</span>
+                    <span class="c1"># structure</span>
+                    <span class="n">results_analysis_sample</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+
+                <span class="c1"># if the likelihood in the current level is below a</span>
+                <span class="c1"># threshold, do not use the sample, break the level</span>
+                <span class="c1"># iteration, and go to the next sample</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># if a sample is not accepted on the highest level, the</span>
+                    <span class="c1"># level_checker still is equal to the highest level</span>
+                    <span class="c1"># index. in that case, it might happen below that</span>
+                    <span class="c1"># unwillingly a sample results in a likelihood (from a</span>
+                    <span class="c1"># lower level) above the threshold and the</span>
+                    <span class="c1"># level_checker corresponding to the highest level. to</span>
+                    <span class="c1"># circumvent this problem, the level_checker needs to</span>
+                    <span class="c1"># be reduced by one</span>
+                    <span class="n">level_checker</span> <span class="o">-=</span> <span class="mi">1</span>
+                    <span class="k">break</span>
+            
+            <span class="c1"># if the likelihood is above the highest level threshold and</span>
+            <span class="c1"># we are currently on the highest level, return all results</span>
+            <span class="k">if</span> <span class="n">likelihood_</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> \
+                <span class="ow">and</span> <span class="n">likelihood_</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thresholds</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> \
+                <span class="ow">and</span> <span class="n">level_checker</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+
+                <span class="k">return</span> <span class="p">(</span>
+                    <span class="n">sample</span><span class="p">,</span>
+                    <span class="n">likelihood_</span><span class="p">,</span>
+                    <span class="n">results</span><span class="p">,</span>
+                    <span class="n">results_analysis_sample</span><span class="p">,</span>
+                    <span class="n">highest_level_call</span>
+                    <span class="p">)</span>
+
+            <span class="c1"># if the above conditions do not hold, return the highest-level</span>
+            <span class="c1"># call variable and False to indicate that the next sample has</span>
+            <span class="c1"># to be considered</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">(</span>
+                    <span class="n">highest_level_call</span><span class="p">,</span>
+                    <span class="kc">False</span>
+                    <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MLGLUE.evaluate_sample_tuning">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.MLGLUE.MLGLUE.evaluate_sample_tuning">[docs]</a>
+    <span class="k">def</span> <span class="nf">evaluate_sample_tuning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">,</span> <span class="n">run_id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Multiprocessing MLGLUE tuning utility.</span>
+
+<span class="sd">        Evaluate a single parameter sample for tuning with the MLGLUE</span>
+<span class="sd">        hierarchy. This design allows for multiprocessing (using Ray).</span>
+<span class="sd">        Although similar to the evaluate_sample method, this method is</span>
+<span class="sd">        slightly different: independently of the actual likelihood value,</span>
+<span class="sd">        the sample is passed through all levels in the model hierarchy.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        sample : 1D list-like of float</span>
+<span class="sd">            The parameter sample which is evaluated. Each element has to</span>
+<span class="sd">            represent an individual model parameter. Note that the order of</span>
+<span class="sd">            the elements has to correspond to the order of model parameters</span>
+<span class="sd">            in the model callable.</span>
+<span class="sd">        run_id : int or str</span>
+<span class="sd">            A run identifier in the form of an integer or string (the value</span>
+<span class="sd">            of run_id is converted to a str later in any case). The value</span>
+<span class="sd">            of run_id is also passed to the model callable, which is</span>
+<span class="sd">            especially relevant if each model run is associated with a</span>
+<span class="sd">            corresponding individual working directory. Then this directory</span>
+<span class="sd">            can be named including the run_id value. This resolves problems</span>
+<span class="sd">            for multiprocessing when multiple such individual directories</span>
+<span class="sd">            are present in the same parent directory.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        likelihoods_sample : 1D list-like of float</span>
+<span class="sd">            The likelihood values on all levels corresponding to the</span>
+<span class="sd">            parameter sample (except for tuning samples that result in an</span>
+<span class="sd">            error or NaN returned by the model callable). The order is from</span>
+<span class="sd">            the lowest to the highest level.</span>
+<span class="sd">        results_analysis_tuning_sample : 2D list-like of float</span>
+<span class="sd">            Holds simulated observation equivalents (ans possibly other</span>
+<span class="sd">            quantities returned by the model) corresponding to the tuning</span>
+<span class="sd">            sample (except for tuning samples that result in an error or</span>
+<span class="sd">            NaN returned by the model callable) on all levels;</span>
+<span class="sd">            has the tuning samples in the first dimension, the levels in</span>
+<span class="sd">            the second dimension, and the simulated values in the third</span>
+<span class="sd">            dimension.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># initialize internal data structures</span>
+        <span class="n">likelihoods_sample</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">results_analysis_tuning_sample</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># set the internal level index to 0 (i.e., start sample evaluation</span>
+        <span class="c1"># on level 0)</span>
+        <span class="n">level_</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># evaluate the model on level 0 using the given parameter sample</span>
+        <span class="c1"># and using the model callable from the corresponding instance</span>
+        <span class="c1"># attribute</span>
+        <span class="n">likelihood_</span><span class="p">,</span> <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span>
+            <span class="n">parameters</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span>
+            <span class="n">level</span><span class="o">=</span><span class="n">level_</span><span class="p">,</span>
+            <span class="n">n_levels</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span><span class="p">,</span>
+            <span class="n">obs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span>
+            <span class="n">likelihood</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">likelihood</span><span class="p">,</span>
+            <span class="n">run_id</span><span class="o">=</span><span class="n">run_id</span>
+            <span class="p">)</span>
+
+        <span class="c1"># append likelihood value and results to internal data structures</span>
+        <span class="c1"># the case where the likelihood is None etc. is handeled below</span>
+        <span class="n">likelihoods_sample</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">likelihood_</span><span class="p">)</span>
+        <span class="n">results_analysis_tuning_sample</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+
+        <span class="c1"># start passing the sample through the model hierarchy</span>
+        <span class="k">for</span> <span class="n">level__</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span><span class="p">):</span>
+            <span class="n">likelihood_</span><span class="p">,</span> <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span>
+                <span class="n">parameters</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span>
+                <span class="n">level</span><span class="o">=</span><span class="n">level__</span><span class="p">,</span>
+                <span class="n">n_levels</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_levels</span><span class="p">,</span>
+                <span class="n">obs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">obs</span><span class="p">,</span>
+                <span class="n">likelihood</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">likelihood</span><span class="p">,</span>
+                <span class="n">run_id</span><span class="o">=</span><span class="n">run_id</span>
+                <span class="p">)</span>
+
+            <span class="c1"># append likelihood value and results to internal data</span>
+            <span class="c1"># structures the case where the likelihood is None etc. is</span>
+            <span class="c1"># handeled below</span>
+            <span class="n">likelihoods_sample</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">likelihood_</span><span class="p">)</span>
+            <span class="n">results_analysis_tuning_sample</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+
+        <span class="c1"># handle the case where any likelihood is None in the model</span>
+        <span class="c1"># hierarchy for the current sample. return noe to completely</span>
+        <span class="c1"># discard all results renated to that sample</span>
+        <span class="k">if</span> <span class="kc">None</span> <span class="ow">in</span> <span class="n">likelihoods_sample</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        
+        <span class="c1"># similarly check for NaN values and discard all results if found</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">likelihoods_sample</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">likelihoods_sample</span><span class="p">,</span> <span class="n">results_analysis_tuning_sample</span></div>
+
+        
+<div class="viewcode-block" id="MLGLUE.check_samples">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.MLGLUE.MLGLUE.check_samples">[docs]</a>
+    <span class="k">def</span> <span class="nf">check_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check user-specified parameter samples.</span>
+
+<span class="sd">        Check the user-specified parameter samples. If a tuple is given,</span>
+<span class="sd">        assign the elements to the respective attributes. If a single 2D</span>
+<span class="sd">        array-like is given, split it into tuning and sampling parts.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">multiprocessing</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">samples_tuning</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">samples_sampling</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">iterable_tuning</span> <span class="o">=</span> \
+                    <span class="p">[(</span><span class="n">s</span><span class="p">,</span> <span class="n">idx</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                        <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">[</span><span class="mi">0</span><span class="p">]))])]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">iterable_sampling</span> <span class="o">=</span> \
+                    <span class="p">[(</span><span class="n">s</span><span class="p">,</span> <span class="n">idx</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                        <span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span>
+                            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">[</span><span class="mi">1</span><span class="p">]))])]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># get index at which to split the samples</span>
+                <span class="n">samples_divide</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">tuning</span><span class="p">)</span>
+
+                <span class="c1"># split the samples</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">multiprocessing</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">samples_tuning</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">[:</span><span class="n">samples_divide</span><span class="p">,</span> <span class="p">:]</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">samples_sampling</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">[</span><span class="n">samples_divide</span><span class="p">:,</span> <span class="p">:]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">iterable_tuning</span> <span class="o">=</span> \
+                        <span class="p">[(</span><span class="n">s</span><span class="p">,</span> <span class="n">idx</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">[:</span><span class="n">samples_divide</span><span class="p">,</span> <span class="p">:],</span>
+                            <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span>
+                                <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">[:</span><span class="n">samples_divide</span><span class="p">,</span> <span class="p">:]))])]</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">iterable_sampling</span> <span class="o">=</span> \
+                        <span class="p">[(</span><span class="n">s</span><span class="p">,</span> <span class="n">idx</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">[</span><span class="n">samples_divide</span><span class="p">:,</span> <span class="p">:],</span>
+                            <span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">[:</span><span class="n">samples_divide</span><span class="p">,</span> <span class="p">:])</span> <span class="k">for</span> \
+                             <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">[</span><span class="n">samples_divide</span><span class="p">:,</span> <span class="p">:]))])]</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The provided samples could not be &quot;</span>
+                                 <span class="s2">&quot;split into tuning and sampling parts. &quot;</span>
+                                 <span class="s2">&quot;Check the tuning fraction as well as &quot;</span>
+                                 <span class="s2">&quot;the array of samples provided (samples &quot;</span>
+                                 <span class="s2">&quot;have to have shape (n_samples, &quot;</span>
+                                 <span class="s2">&quot;n_parameters)).&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span></div>
+
+    
+<div class="viewcode-block" id="MLGLUE.get_uniform_samples">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.MLGLUE.MLGLUE.get_uniform_samples">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_uniform_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get uniform parameter samples.</span>
+
+<span class="sd">        Get uniform parameter samples in case no user-defined samples are</span>
+<span class="sd">        provided. The user-defined upper and lower bounds of the parameter</span>
+<span class="sd">        vector are used.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">No samples provided, using uniform sampling...&quot;</span><span class="p">)</span>
+        <span class="c1"># generate samples</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span>
+            <span class="n">low</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">lower_bounds</span><span class="p">,</span>
+            <span class="n">high</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">upper_bounds</span><span class="p">,</span>
+            <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_samples</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lower_bounds</span><span class="p">))</span>
+        <span class="p">)</span>
+
+        <span class="c1"># split the samples into tuning and sampling parts</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_samples</span><span class="p">()</span>
+
+        <span class="k">return</span></div>
+
+    
+<div class="viewcode-block" id="MLGLUE.perform_MLGLUE_multiprocessing_tuning">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.MLGLUE.MLGLUE.perform_MLGLUE_multiprocessing_tuning">[docs]</a>
+    <span class="k">def</span> <span class="nf">perform_MLGLUE_multiprocessing_tuning</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;MLGLUE tuning using multiprocessing.</span>
+
+<span class="sd">        Perform the MLGLUE tuning using multiprocessing / Ray. This only</span>
+<span class="sd">        includes actual computations and not the preparation of samples</span>
+<span class="sd">        etc.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># shut down ray and initialize again</span>
+        <span class="n">ray</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+        <span class="n">ray</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">num_cpus</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_processors</span><span class="p">)</span>
+
+        <span class="c1"># perform tuning with multiprocessing</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Starting tuning with multiprocessing...&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">Pool</span><span class="p">(</span><span class="n">processes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_processors</span><span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">pool</span><span class="o">.</span><span class="n">starmap</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">evaluate_sample_tuning</span><span class="p">,</span>
+                                       <span class="bp">self</span><span class="o">.</span><span class="n">iterable_tuning</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">num</span><span class="p">,</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">result</span><span class="p">[</span><span class="mi">1</span><span class="p">])):</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">likelihoods_tuning</span><span class="p">[</span><span class="n">num</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">results_analysis_tuning</span><span class="p">[</span><span class="n">num</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">ray</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+        <span class="n">ray</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+
+        <span class="k">return</span></div>
+
+
+<div class="viewcode-block" id="MLGLUE.perform_MLGLUE_multiprocessing_sampling">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.MLGLUE.MLGLUE.perform_MLGLUE_multiprocessing_sampling">[docs]</a>
+    <span class="k">def</span> <span class="nf">perform_MLGLUE_multiprocessing_sampling</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;MLGLUE sampling using multiprocessing.</span>
+
+<span class="sd">        Perform the MLGLUE sampling using multiprocessing / Ray. This only</span>
+<span class="sd">        includes actual computations and not the preparation of samples</span>
+<span class="sd">        etc.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ray</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+        <span class="n">ray</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">num_cpus</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_processors</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Starting sampling with multiprocessing...&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">Pool</span><span class="p">(</span><span class="n">processes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_processors</span><span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">eval_</span> <span class="ow">in</span> <span class="n">pool</span><span class="o">.</span><span class="n">starmap</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">evaluate_sample</span><span class="p">,</span>
+                                      <span class="bp">self</span><span class="o">.</span><span class="n">iterable_sampling</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">eval_</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">eval_</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">False</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">selected_samples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">eval_</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">likelihoods</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">eval_</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">eval_</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+                    <span class="k">for</span> <span class="n">num</span><span class="p">,</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">eval_</span><span class="p">[</span><span class="mi">3</span><span class="p">]):</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">results_analysis</span><span class="p">[</span><span class="n">num</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">eval_</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">highest_level_calls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">eval_</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+                <span class="k">elif</span> <span class="n">eval_</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">eval_</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">eval_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">highest_level_calls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">eval_</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">ray</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+
+        <span class="k">return</span></div>
+
+
+<div class="viewcode-block" id="MLGLUE.perform_MLGLUE_singlecore_tuning">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.MLGLUE.MLGLUE.perform_MLGLUE_singlecore_tuning">[docs]</a>
+    <span class="k">def</span> <span class="nf">perform_MLGLUE_singlecore_tuning</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;MLGLUE tuning using a single CPU.</span>
+
+<span class="sd">        Perform the MLGLUE tuning using a single CPU. This only includes</span>
+<span class="sd">        actual computations and not the preparation of samples etc.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># perform tuning</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Starting tuning without multiprocessing...&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">MLGLUE_tuning</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples_tuning</span><span class="p">)</span>
+
+        <span class="k">return</span></div>
+
+    
+<div class="viewcode-block" id="MLGLUE.perform_MLGLUE_singlecore_sampling">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.MLGLUE.MLGLUE.perform_MLGLUE_singlecore_sampling">[docs]</a>
+    <span class="k">def</span> <span class="nf">perform_MLGLUE_singlecore_sampling</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;MLGLUE sampling using a single CPU.</span>
+
+<span class="sd">        Perform the MLGLUE sampling using a single CPU. This only includes</span>
+<span class="sd">        actual computations and not the preparation of samples etc.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># perform sampling</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Starting sampling without multiprocessing...&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">MLGLUE_sampling</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples_sampling</span><span class="p">)</span>
+
+        <span class="k">return</span></div>
+
+    
+<div class="viewcode-block" id="MLGLUE.perform_MLGLUE">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.MLGLUE.MLGLUE.perform_MLGLUE">[docs]</a>
+    <span class="k">def</span> <span class="nf">perform_MLGLUE</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform the full MLGLUE algorithm. </span>
+<span class="sd">        </span>
+<span class="sd">        Perform the full MLGLUE algorithm using single-core or parallelized</span>
+<span class="sd">        computation. Settings for performing all computations are obtained</span>
+<span class="sd">        from instance attributes.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        selected_samples : 2D array-like of float</span>
+<span class="sd">            The array of selected samples that are accepted on the highest</span>
+<span class="sd">            level; has individual samples as rows and variables / model</span>
+<span class="sd">            parameters as columns.</span>
+<span class="sd">        likelihoods : 1D array-like of float</span>
+<span class="sd">            The likelihood values correpsonding to the selected samples.</span>
+<span class="sd">        results : 2D array-like of float</span>
+<span class="sd">            Holds simulated observation equivalents corresponding to all</span>
+<span class="sd">            posterior samples; has shape (len(selected_samples), len(obs)).</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        The returns of this function can always be accessed by referring to</span>
+<span class="sd">        the correpsonding instance attributes. This function only returns</span>
+<span class="sd">        those instance attributes for convenience.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># if multiprocessing is enabled, try to shut down any potentially</span>
+        <span class="c1"># running Ray instance. if this throws an error (either because</span>
+        <span class="c1"># there is nothing to shut down or because Ray is not installed),</span>
+        <span class="c1"># the user is notified.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">multiprocessing</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">ray</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">-----&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;----&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;MLGLUE tried to shut down any running instances &quot;</span>
+                      <span class="s2">&quot;of Ray. This resulted in an error. Please check &quot;</span>
+                      <span class="s2">&quot;for any unwanted behaviour. MLGLUE will continue &quot;</span>
+                      <span class="s2">&quot;now.&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;----&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-----</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># get the parameter samples</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">get_uniform_samples</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">check_samples</span><span class="p">()</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;There was a problem obtaining the &quot;</span>
+                             <span class="s2">&quot;parameter samples. Check the provided &quot;</span>
+                             <span class="s2">&quot;samples, parameter bounds, n_samples, and &quot;</span>
+                             <span class="s2">&quot;tuning fraction.&quot;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">multiprocessing</span><span class="p">:</span>
+            <span class="c1"># perform tuning</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">thresholds_predefined</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">perform_MLGLUE_multiprocessing_tuning</span><span class="p">()</span>
+
+            <span class="c1"># analyze variances and mean values</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hierarchy_analysis</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">analyze_variances_likelihoods</span><span class="p">(</span><span class="n">raise_error</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">analyze_means_likelihoods</span><span class="p">(</span><span class="n">raise_error</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">hierarchy_analysis</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">analyze_variances_likelihoods</span><span class="p">(</span><span class="n">raise_error</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">analyze_means_likelihoods</span><span class="p">(</span><span class="n">raise_error</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No valid variance analysis methodology selected; &quot;</span>
+                      <span class="s2">&quot;continuing without analysis!&quot;</span><span class="p">)</span>
+            <span class="c1"># compute thresholds</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">calculate_thresholds</span><span class="p">()</span>
+            
+            <span class="c1"># perform sampling</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">perform_MLGLUE_multiprocessing_sampling</span><span class="p">()</span>
+        
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># perform tuning</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">thresholds_predefined</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">perform_MLGLUE_singlecore_tuning</span><span class="p">()</span>
+
+            <span class="c1"># analyze variances and mean values</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hierarchy_analysis</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">analyze_variances_likelihoods</span><span class="p">(</span><span class="n">raise_error</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">analyze_means_likelihoods</span><span class="p">(</span><span class="n">raise_error</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">hierarchy_analysis</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">analyze_variances_likelihoods</span><span class="p">(</span><span class="n">raise_error</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">analyze_means_likelihoods</span><span class="p">(</span><span class="n">raise_error</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No valid variance analysis methodology selected; &quot;</span>
+                      <span class="s2">&quot;continuing without analysis!&quot;</span><span class="p">)</span>
+            <span class="c1"># compute thresholds</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">calculate_thresholds</span><span class="p">()</span>
+            
+            <span class="c1"># perform sampling</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">perform_MLGLUE_singlecore_sampling</span><span class="p">()</span>
+        
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">selected_samples</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">likelihoods</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span></div>
+
+
+<div class="viewcode-block" id="MLGLUE.estimate_uncertainty">
+<a class="viewcode-back" href="../../MLGLUE.html#MLGLUE.MLGLUE.MLGLUE.estimate_uncertainty">[docs]</a>
+    <span class="k">def</span> <span class="nf">estimate_uncertainty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">quantiles</span><span class="o">=</span><span class="p">[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.99</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Estimate simulation uncertainty.</span>
+
+<span class="sd">        Estimate the simulation uncertainty, i.e., normalize likelihoods,</span>
+<span class="sd">        and create probability densities for the model output. From that,</span>
+<span class="sd">        uncertainty estimates given by user-defined quantiles are computed.</span>
+<span class="sd">        The estimates are obtained by (1) normalizing likelihood values for</span>
+<span class="sd">        individual values to always be in the range [0, 1], (2) ordering</span>
+<span class="sd">        model outputs according to their associated normalized likelihood</span>
+<span class="sd">        value, (3) estimating CDFs for the model outputs, and (4) computing</span>
+<span class="sd">        quantile estimates.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        quantiles : 1D list-like of float</span>
+<span class="sd">            The quantiles with which to estimate the uncertainty of model</span>
+<span class="sd">            outputs. Quantiles have to be given as floats in the range</span>
+<span class="sd">            (0, 1). Default is [0.01, 0.50, 0.99].</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        uncertainty : 2D list-like of float</span>
+<span class="sd">            The uncertainty estimates where individual model outputs are in</span>
+<span class="sd">            rows and quantiles are in columns (in the order corresponding</span>
+<span class="sd">            to the given quantiles).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># normalize likelihoods</span>
+        <span class="k">if</span> <span class="n">quantiles</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">quantiles</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.95</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">normalized_likelihoods</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">likelihoods</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">likelihoods</span><span class="p">))</span>
+
+        <span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">)</span>
+        
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;shape of values: &quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">values</span><span class="p">))</span>
+
+        <span class="n">uncertainty</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># sort</span>
+        <span class="k">if</span> <span class="n">values</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">values</span><span class="p">)[</span><span class="mi">1</span><span class="p">]):</span>
+                <span class="n">sorter</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">values</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]))</span>
+                <span class="n">values_</span> <span class="o">=</span> <span class="n">values</span><span class="p">[:,</span> <span class="n">i</span><span class="p">][</span><span class="n">sorter</span><span class="p">]</span>
+                <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">likelihoods</span><span class="p">)[</span><span class="n">sorter</span><span class="p">]</span>
+
+                <span class="c1"># weighted_quantiles = np.cumsum(weights) - 0.5 * weights</span>
+                <span class="c1"># weighted_quantiles /= np.sum(weights)</span>
+
+                <span class="n">weighted_quantiles</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+
+                <span class="n">uncertainty</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">quantiles</span><span class="p">,</span> <span class="n">weighted_quantiles</span><span class="p">,</span>
+                                             <span class="n">values_</span><span class="p">))</span>
+
+        <span class="k">elif</span> <span class="n">values</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">sorter</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+            <span class="n">values_</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">sorter</span><span class="p">]</span>
+            <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">likelihoods</span><span class="p">)[</span><span class="n">sorter</span><span class="p">]</span>
+
+            <span class="n">weighted_quantiles</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">weights</span>
+            <span class="n">weighted_quantiles</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+
+            <span class="n">uncertainty</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">quantiles</span><span class="p">,</span> <span class="n">weighted_quantiles</span><span class="p">,</span>
+                                         <span class="n">values_</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">uncertainty</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Max Rudolph.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

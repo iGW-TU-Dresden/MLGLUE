@@ -7,11 +7,11 @@ class InverseErrorVarianceLikelihood():
         This class represents the Inverse Variance Likelihood function with
         its utilities. It is computed as
 
-        .. math:: \mathcal{L}(\theta | Y) = (\sigma_e^2)^{-T}
+        .. math:: L(\\theta | Y) = (\\sigma_e^2)^{-T}
 
-        where :math:`\mathcal{L}(\cdot)` is the likelihood function,
-        :math:`\theta` are model parameters, :math:`Y` are observations,
-        :math:`sigma_e^2` is the error or residual variance, and
+        where :math:`L(\\cdot)` is the likelihood function,
+        :math:`\\theta` are model parameters, :math:`Y` are observations,
+        :math:`\\sigma_e^2` is the error or residual variance, and
         :math:`T` is the shape parameter.
 
         Parameters
@@ -23,7 +23,7 @@ class InverseErrorVarianceLikelihood():
             be in the range (0, 1).
         T : float
             A shape parameter of the likelihood function. When :math:`T=0`,
-            every simulation will have equal likelihood. When :math:`T \to \infty`,
+            every simulation will have equal likelihood. When :math:`T \\to \\infty`,
             the emphasis will be put on the single best simulation. A value
             of :math:`T=1` is often used.
         weights : 1D array-like of float
@@ -40,7 +40,7 @@ class InverseErrorVarianceLikelihood():
             be in the range (0, 1).
         T : float
             A shape parameter of the likelihood function. When :math:`T=0`,
-            every simulation will have equal likelihood. When :math:`T \to \infty`,
+            every simulation will have equal likelihood. When :math:`T \\to \\infty`,
             the emphasis will be put on the single best simulation. A value
             of :math:`T=1` is often used.
         weights : 1D array-like of float
@@ -58,10 +58,14 @@ class InverseErrorVarianceLikelihood():
     def likelihood(self, obs=None, sim=None):
         """Compute the Inverse Variance Likelihood
         
-        Compute the Inverse Variance Likelihood (see the class
-        documentation): 
+        Compute the Inverse Variance Likelihood: 
 
-        .. math:: \mathcal{L}(\theta | Y) = (\sigma_e^2)^{-T}
+        .. math:: L(\\theta|Y) = (\\sigma_e^2)^{-T}
+
+        where :math:`L(\\cdot)` is the likelihood function,
+        :math:`\\theta` are model parameters, :math:`Y` are observations,
+        :math:`\\sigma_e^2` is the error or residual variance, and
+        :math:`T` is the shape parameter.
 
         Parameters
         ----------
@@ -139,12 +143,12 @@ class RelativeVarianceLikelihood():
         This class represents the Relative Variance Likelihood function
         with its utilities. It is computed as
 
-        .. math:: \mathcal{L}(\theta | Y) = 1 - \frac{\sigma_e^2}{\sigma_{obs}^2}
+        .. math:: L(\\theta | Y) = 1 - \\frac{\\sigma_e^2}{\\sigma_{obs}^2}
 
-        where :math:`\mathcal{L}(\cdot)` is the likelihood function,
-        :math:`\theta` are model parameters, :math:`Y` are observations,
-        :math:`sigma_e^2` is the variance of errors or residuals, and
-        :math:`sigma_{obs}^2` is the variance of observed values.
+        where :math:`L(\\cdot)` is the likelihood function,
+        :math:`\\theta` are model parameters, :math:`Y` are observations,
+        :math:`\\sigma_e^2` is the variance of errors or residuals, and
+        :math:`\\sigma_{obs}^2` is the variance of observed values.
 
         Parameters
         ----------
@@ -179,10 +183,14 @@ class RelativeVarianceLikelihood():
     def likelihood(self, obs=None, sim=None):
         """Compute the Relative Variance Likelihood
         
-        Compute the Relative Variance Likelihood (see the class
-        documentation): 
+        Compute the Relative Variance Likelihood:
 
-        .. math:: \mathcal{L}(\theta | Y) = 1 - \frac{\sigma_e^2}{\sigma_{obs}^2}
+        .. math:: L(\\theta | Y) = 1 - \\frac{\\sigma_e^2}{\\sigma_{obs}^2}
+
+        where :math:`L(\\cdot)` is the likelihood function,
+        :math:`\\theta` are model parameters, :math:`Y` are observations,
+        :math:`\\sigma_e^2` is the variance of errors or residuals, and
+        :math:`\\sigma_{obs}^2` is the variance of observed values.
 
         Parameters
         ----------
@@ -259,12 +267,12 @@ class GaussianLogLikelihood():
         This class represents the Gaussian log-likelihood function
         with its utilities. It is computed as
 
-        .. math:: \mathcal{L}(\theta | Y) = - \frac{n}{2}\ln(2\pi) - \frac{n}{2}\ln(\sigma^2) - \frac{1}{2}\sigma^{-2} \times \sum_{i=1}^n (y'_i(\theta) - y_i)^2
+        .. math:: L(\\theta | Y) = - \\frac{n}{2}\\ln(2\\pi) - \\frac{n}{2}\\ln(\\sigma^2) - \\frac{1}{2}\\sigma^{-2} \\times \\sum_{i=1}^n (y'_i(\\theta) - y_i)^2
 
-        where :math:`\mathcal{L}(\cdot)` is the log-likelihood function,
-        :math:`\theta` are model parameters, :math:`y_i` are observations,
-        :math:`sigma^2` is the (theoretical) variance of errors or residuals,
-        :math:`y'_i(\cdot)` is the :math:`i`-th model output corresponding
+        where :math:`L(\\cdot)` is the log-likelihood function,
+        :math:`\\theta` are model parameters, :math:`y_i` are observations,
+        :math:`\\sigma^2` is the (theoretical) variance of errors or residuals,
+        :math:`y'_i(\\cdot)` is the :math:`i`-th model output corresponding
         to the :math:`i`-th observation.
 
         Parameters
@@ -305,10 +313,15 @@ class GaussianLogLikelihood():
     def likelihood(self, obs=None, sim=None):
         """Compute the Gaussian log-likelihood
         
-        Compute the Gaussian log-likelihood (see the class
-        documentation): 
+        Compute the Gaussian log-likelihood: 
 
-        .. math:: \mathcal{L}(\theta | Y) = - \frac{n}{2}\ln(2\pi) - \frac{n}{2}\ln(\sigma^2) - \frac{1}{2}\sigma^{-2} \times \sum_{i=1}^n (y'_i(\theta) - y_i)^2
+        .. math:: L(\\theta | Y) = - \\frac{n}{2}\\ln(2\\pi) - \\frac{n}{2}\\ln(\\sigma^2) - \\frac{1}{2}\\sigma^{-2} \\times \\sum_{i=1}^n (y'_i(\\theta) - y_i)^2
+
+        where :math:`L(\\cdot)` is the log-likelihood function,
+        :math:`\\theta` are model parameters, :math:`y_i` are observations,
+        :math:`\\sigma^2` is the (theoretical) variance of errors or residuals,
+        :math:`y'_i(\\cdot)` is the :math:`i`-th model output corresponding
+        to the :math:`i`-th observation.
 
         Parameters
         ----------
