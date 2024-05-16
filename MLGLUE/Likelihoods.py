@@ -2,17 +2,51 @@ import numpy as np
 
 class InverseErrorVarianceLikelihood():
     def __init__(self, threshold=0.1, T=2., weights=None):
-        """
-        :param threshold: the threshold to use, given as a fraction of
-            simulations that are accepted (the actual likelihood value for
-            the threshold is inferred during the tuning phase of MLGLUE);
-            float between 0 and 1
-        :param T: a shape parameter of the likelihood function, representing
-            more "stricness" with increasing values; float
-        :param weights: a list-like of weights for the individual observations
-            (if None, all weights are set to 1.) where the length needs
-            to be equal to the number of observations, list-like of floats
-            or None
+        """The Inverse Variance Likelihood class.
+
+        This class represents the Inverse Variance Likelihood function with
+        its utilities. It is computed as
+
+        .. math:: \mathcal{L}(\theta | Y) = (\sigma_e^2)^{-T}
+
+        where :math:`\mathcal{L}(\cdot)` is the likelihood function,
+        :math:`\theta` are model parameters, :math:`Y` are observations,
+        :math:`sigma_e^2` is the error or residual variance, and
+        :math:`T` is the shape parameter.
+
+        Parameters
+        ----------
+        threshold : float
+            The threshold to use, given as a fraction of simulations that
+            are accepted (the actual likelihood value for the threshold is
+            inferred during the tuning phase of MLGLUE). The value has to
+            be in the range (0, 1).
+        T : float
+            A shape parameter of the likelihood function. When :math:`T=0`,
+            every simulation will have equal likelihood. When :math:`T \to \infty`,
+            the emphasis will be put on the single best simulation. A value
+            of :math:`T=1` is often used.
+        weights : 1D array-like of float
+            The weights of the observations / simulated observation
+            equivalents. Note that those weights are not checked further
+            and are just used as provided.
+
+        Attributes
+        ---------- 
+        threshold : float
+            The threshold to use, given as a fraction of simulations that
+            are accepted (the actual likelihood value for the threshold is
+            inferred during the tuning phase of MLGLUE). The value has to
+            be in the range (0, 1).
+        T : float
+            A shape parameter of the likelihood function. When :math:`T=0`,
+            every simulation will have equal likelihood. When :math:`T \to \infty`,
+            the emphasis will be put on the single best simulation. A value
+            of :math:`T=1` is often used.
+        weights : 1D array-like of float
+            The weights of the observations / simulated observation
+            equivalents. Note that those weights are not checked further
+            and are just used as provided.
         """
 
         self.threshold = threshold
@@ -22,16 +56,25 @@ class InverseErrorVarianceLikelihood():
         return
 
     def likelihood(self, obs=None, sim=None):
-        """
-        Compute the likelihood according to Beven & Binley (1991), i.e., the
-        inverse error variance likelihood
-
-        :param obs: a 1D list-like corresponding to the observation y-values;
-            list-like
-        :param sim: a 1D list-like corresponding to the simulation y-values;
-            list-like
+        """Compute the Inverse Variance Likelihood
         
-        :return likelihood: a float value for the likelihood
+        Compute the Inverse Variance Likelihood (see the class
+        documentation): 
+
+        .. math:: \mathcal{L}(\theta | Y) = (\sigma_e^2)^{-T}
+
+        Parameters
+        ----------
+        obs : 1D array-like of float
+            The observations of the system.
+        sim : 1D array-like of float
+            The simulated observation equivalents, simulated by the model.
+
+        Returns
+        -------
+        likelihood : float
+            The likelihood computed from observations and simulated
+            observation equivalents.
         """
 
         try:
@@ -78,6 +121,9 @@ class InverseErrorVarianceLikelihood():
         ssr = np.sum(residuals ** 2)
         likelihood = (ssr / (len(obs) - 2)) ** (-self.T)
 
+        # handle infinite likelihood values
+        # such values should not completely break the algorithm but either
+        # be very large negative or very large positive numbers
         if np.isinf(likelihood):
             if np.isneginf(likelihood):
                 return -1e10
@@ -88,15 +134,41 @@ class InverseErrorVarianceLikelihood():
 
 class RelativeVarianceLikelihood():
     def __init__(self, threshold=0.1, weights=None):
-        """
-        :param threshold: the threshold to use, given as a fraction of
-            simulations that are accepted (the actual likelihood value for
-            the threshold is inferred during the tuning phase of MLGLUE);
-            float between 0 and 1
-        :param weights: a list-like of weights for the individual observations
-            (if None, all weights are set to 1.) where the length needs
-            to be equal to the number of observations, list-like of floats
-            or None
+        """The Relative Variance Likelihood class.
+
+        This class represents the Relative Variance Likelihood function
+        with its utilities. It is computed as
+
+        .. math:: \mathcal{L}(\theta | Y) = 1 - \frac{\sigma_e^2}{\sigma_{obs}^2}
+
+        where :math:`\mathcal{L}(\cdot)` is the likelihood function,
+        :math:`\theta` are model parameters, :math:`Y` are observations,
+        :math:`sigma_e^2` is the variance of errors or residuals, and
+        :math:`sigma_{obs}^2` is the variance of observed values.
+
+        Parameters
+        ----------
+        threshold : float
+            The threshold to use, given as a fraction of simulations that
+            are accepted (the actual likelihood value for the threshold is
+            inferred during the tuning phase of MLGLUE). The value has to
+            be in the range (0, 1).
+        weights : 1D array-like of float
+            The weights of the observations / simulated observation
+            equivalents. Note that those weights are not checked further
+            and are just used as provided.
+
+        Attributes
+        ---------- 
+        threshold : float
+            The threshold to use, given as a fraction of simulations that
+            are accepted (the actual likelihood value for the threshold is
+            inferred during the tuning phase of MLGLUE). The value has to
+            be in the range (0, 1).
+        weights : 1D array-like of float
+            The weights of the observations / simulated observation
+            equivalents. Note that those weights are not checked further
+            and are just used as provided.
         """
 
         self.threshold = threshold
@@ -105,15 +177,25 @@ class RelativeVarianceLikelihood():
         return
 
     def likelihood(self, obs=None, sim=None):
-        """
-        Compute the model efficiency, i.e., the relative variance likelihood
-
-        :param obs: a 1D list-like corresponding to the observation y-values;
-            list-like
-        :param sim: a 1D list-like corresponding to the simulation y-values;
-            list-like
+        """Compute the Relative Variance Likelihood
         
-        :return likelihood: a float value for the likelihood
+        Compute the Relative Variance Likelihood (see the class
+        documentation): 
+
+        .. math:: \mathcal{L}(\theta | Y) = 1 - \frac{\sigma_e^2}{\sigma_{obs}^2}
+
+        Parameters
+        ----------
+        obs : 1D array-like of float
+            The observations of the system.
+        sim : 1D array-like of float
+            The simulated observation equivalents, simulated by the model.
+
+        Returns
+        -------
+        likelihood : float
+            The likelihood computed from observations and simulated
+            observation equivalents.
         """
 
         try:
@@ -159,6 +241,9 @@ class RelativeVarianceLikelihood():
         var_res = residuals.var()
         likelihood = (1 - (var_res / var_obs))
 
+        # handle infinite likelihood values
+        # such values should not completely break the algorithm but either
+        # be very large negative or very large positive numbers
         if np.isinf(likelihood):
             if np.isneginf(likelihood):
                 return -1e10
@@ -169,16 +254,46 @@ class RelativeVarianceLikelihood():
 
 class GaussianLogLikelihood():
     def __init__(self, var, threshold=0.1, weights=None):
-        """
-        :param var: the scalar (data-) variance; float
-        :param threshold: the threshold to use, given as a fraction of
-            simulations that are accepted (the actual likelihood value for
-            the threshold is inferred during the tuning phase of MLGLUE);
-            float between 0 and 1
-        :param weights: a list-like of weights for the individual observations
-            (if None, all weights are set to 1.) where the length needs
-            to be equal to the number of observations, list-like of floats
-            or None
+        """The Gaussian log-likelihood class.
+
+        This class represents the Gaussian log-likelihood function
+        with its utilities. It is computed as
+
+        .. math:: \mathcal{L}(\theta | Y) = - \frac{n}{2}\ln(2\pi) - \frac{n}{2}\ln(\sigma^2) - \frac{1}{2}\sigma^{-2} \times \sum_{i=1}^n (y'_i(\theta) - y_i)^2
+
+        where :math:`\mathcal{L}(\cdot)` is the log-likelihood function,
+        :math:`\theta` are model parameters, :math:`y_i` are observations,
+        :math:`sigma^2` is the (theoretical) variance of errors or residuals,
+        :math:`y'_i(\cdot)` is the :math:`i`-th model output corresponding
+        to the :math:`i`-th observation.
+
+        Parameters
+        ----------
+        threshold : float
+            The threshold to use, given as a fraction of simulations that
+            are accepted (the actual likelihood value for the threshold is
+            inferred during the tuning phase of MLGLUE). The value has to
+            be in the range (0, 1).
+        var : float
+            The (theoretical) error variance of the likelihood function.
+        weights : 1D array-like of float
+            The weights of the observations / simulated observation
+            equivalents. Note that those weights are not checked further
+            and are just used as provided.
+
+        Attributes
+        ---------- 
+        threshold : float
+            The threshold to use, given as a fraction of simulations that
+            are accepted (the actual likelihood value for the threshold is
+            inferred during the tuning phase of MLGLUE). The value has to
+            be in the range (0, 1).
+        var : float
+            The (theoretical) error variance of the likelihood function.
+        weights : 1D array-like of float
+            The weights of the observations / simulated observation
+            equivalents. Note that those weights are not checked further
+            and are just used as provided.
         """
 
         self.threshold = threshold
@@ -188,15 +303,25 @@ class GaussianLogLikelihood():
         return
 
     def likelihood(self, obs=None, sim=None):
-        """
-        Compute the Gaussian log-likelihood
+        """Compute the Gaussian log-likelihood
         
-        :param obs: a 1D list-like corresponding to the observation y-values;
-            list-like
-        :param sim: a 1D list-like corresponding to the simulation y-values;
-            list-like
-        
-        :return likelihood: a float value for the likelihood
+        Compute the Gaussian log-likelihood (see the class
+        documentation): 
+
+        .. math:: \mathcal{L}(\theta | Y) = - \frac{n}{2}\ln(2\pi) - \frac{n}{2}\ln(\sigma^2) - \frac{1}{2}\sigma^{-2} \times \sum_{i=1}^n (y'_i(\theta) - y_i)^2
+
+        Parameters
+        ----------
+        obs : 1D array-like of float
+            The observations of the system.
+        sim : 1D array-like of float
+            The simulated observation equivalents, simulated by the model.
+
+        Returns
+        -------
+        likelihood : float
+            The likelihood computed from observations and simulated
+            observation equivalents.
         """
 
         try:
@@ -245,6 +370,9 @@ class GaussianLogLikelihood():
         loglike = (- len(obs)/2) * (np.log(2*np.pi*self.var)) -\
                   (1/(2*self.var)) * np.sum(residuals ** 2)
 
+        # handle infinite likelihood values
+        # such values should not completely break the algorithm but either
+        # be very large negative or very large positive numbers
         if np.isinf(loglike):
             if np.isneginf(loglike):
                 return -1e10
