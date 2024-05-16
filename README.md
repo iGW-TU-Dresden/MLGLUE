@@ -7,7 +7,8 @@ This Python package is an implementation of the Multilevel Generalized Likelihoo
 `MLGLUE` uses `Ray` for parallelization. Installation using `pip install MLGLUE` also installs `Ray` as dependency along `numpy` and `matplotlib`. Using a custom installation, please prepare an environment for `Ray` first as described [here](https://docs.ray.io/en/releases-2.2.0/ray-overview/installation.html) for version `2.2.0`. The use of other versions of `Ray` has not been tested.
 
 ## Documentation
-A documentation webpage is available under [readthedocs](https://mlglue.readthedocs.io/en/latest/).
+[![Documentation Status](https://readthedocs.org/projects/mlglue/badge/?version=latest)](https://mlglue.readthedocs.io/en/latest/?badge=latest)
+A documentation webpage is available [here](https://mlglue.readthedocs.io/en/latest/) or alternatively under `mlglue.readthedocs.io`.
 
 ## Usage
 `MLGLUE` requires the computational model to be given in the form of a function with a specific set of arguments and returns:
