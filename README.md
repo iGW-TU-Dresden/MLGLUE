@@ -1,10 +1,13 @@
 # MLGLUE
-This Python package is an implementation of the Multilevel Generalized Likelihood Uncertainty Estimation (MLGLUE) algorithm, including some utility functions. See the MLGLUE paper [here](doi.org/10.22541/essoar.169833433.35092350/v1) (preprint).
+This Python package is an implementation of the Multilevel Generalized Likelihood Uncertainty Estimation (MLGLUE) algorithm, including some utility functions. See the MLGLUE paper [here](https://essopenarchive.org/users/677423/articles/853135-extending-glue-with-multilevel-methods-to-accelerate-statistical-inversion-of-hydrological-models) (preprint).
 
 ## Installation
 `pip install MLGLUE`
 
-`MLGLUE` uses `Ray` for parallelization. To ensure functionality, please prepare an environment for `Ray` first as described [here](https://docs.ray.io/en/releases-2.2.0/ray-overview/installation.html) for version `2.2.0`. The use of other versions of `Ray` has not been tested.
+`MLGLUE` uses `Ray` for parallelization. Installation using `pip install MLGLUE` also installs `Ray` as dependency along `numpy` and `matplotlib`. Using a custom installation, please prepare an environment for `Ray` first as described [here](https://docs.ray.io/en/releases-2.2.0/ray-overview/installation.html) for version `2.2.0`. The use of other versions of `Ray` has not been tested.
+
+## Documentation
+A documentation webpage is available under [readthedocs](https://mlglue.readthedocs.io/en/latest/).
 
 ## Usage
 `MLGLUE` requires the computational model to be given in the form of a function with a specific set of arguments and returns:
