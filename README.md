@@ -8,6 +8,7 @@ This Python package is an implementation of the Multilevel Generalized Likelihoo
 
 ## Documentation
 [![Documentation Status](https://readthedocs.org/projects/mlglue/badge/?version=latest)](https://mlglue.readthedocs.io/en/latest/?badge=latest)
+
 A documentation webpage is available [here](https://mlglue.readthedocs.io/en/latest/) or alternatively under `mlglue.readthedocs.io`.
 
 ## Usage
