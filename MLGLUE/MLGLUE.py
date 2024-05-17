@@ -556,7 +556,8 @@ class MLGLUE():
         difference between likelihood values on subsequent levels.
 
         Specifically, the following expression is evaluated for all levels:
-        .. math:: Var[L_{\\ell} - L_{\\ell-1}] = Var[L_{\\ell}] + Var[L_{\\ell-1}] - 2 Cov[L_{\\ell}-L_{\\ell-1}]
+        
+        .. math:: \mathbb{V}[L_{\\ell} - L_{\\ell-1}] = \mathbb{V}[L_{\\ell}] + \mathbb{V}[L_{\\ell-1}] - 2 Cov[L_{\\ell}-L_{\\ell-1}]
 
         where :math:`L_{\\ell}` is the random variable representing
         likelihood values on level :math:`\\ell` form the tuning phase.
@@ -728,7 +729,8 @@ class MLGLUE():
         subsequent levels.
 
         Specifically, the following expression is evaluated for all levels:
-        .. math:: E[L_{\\ell} - L_{\\ell-1}] = E[L_{\\ell}] - E[L_{\\ell-1}]
+
+        .. math:: \mathbb{E}[L_{\\ell} - L_{\\ell-1}] = \mathbb{E}[L_{\\ell}] - \mathbb{E}[L_{\\ell-1}]
 
         where :math:`L_{\\ell}` is the random variable representing
         likelihood values on level :math:`\\ell` form the tuning phase.
