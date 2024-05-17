@@ -557,13 +557,13 @@ class MLGLUE():
 
         Specifically, the following expression is evaluated for all levels:
         
-        .. math:: \mathbb{V}[L_{\\ell} - L_{\\ell-1}] = \mathbb{V}[L_{\\ell}] + \mathbb{V}[L_{\\ell-1}] - 2 Cov[L_{\\ell}-L_{\\ell-1}]
+        .. math:: \mathbb{V}[L_{\\ell} - L_{\\ell-1}] = \mathbb{V}[L_{\\ell}] + \mathbb{V}[L_{\\ell-1}] - 2 \cdot Cov[L_{\\ell}-L_{\\ell-1}]
 
         where :math:`L_{\\ell}` is the random variable representing
         likelihood values on level :math:`\\ell` form the tuning phase.
-        Then, for :math:`Var[L_{\\ell}-L_{\\ell-1}]` to decay
-        monotonically, :math:`2Cov[L_{\\ell}-L_{\\ell-1}]` has to be
-        larger than :math:`Var[L_{\\ell-1}]`, which implies that two
+        Then, for :math:`\mathbb{V}[L_{\\ell}-L_{\\ell-1}]` to decay
+        monotonically, :math:`2 \cdot Cov[L_{\\ell}-L_{\\ell-1}]` has to be
+        larger than :math:`\mathbb{V}[L_{\\ell-1}]`, which implies that two
         subsequent levels need to be sufficiently correlated.
 
         Parameters
