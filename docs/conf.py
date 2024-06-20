@@ -33,7 +33,6 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.ifconfig",
     "sphinx.ext.viewcode",
-    "sphinxcontrib.bibtex",
     "sphinx_design",
     "sphinx.ext.autosectionlabel",
 ]
