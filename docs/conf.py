@@ -10,15 +10,13 @@ import os
 import sys
 from datetime import date
 
-from MLGLUE import __version__
-
 sys.path.insert(0, os.path.abspath(".."))
 
 project = 'MLGLUE'
 copyright = '2024, Max Rudolph'
 author = 'Max Rudolph'
-release = __version__
-version = __version__
+release = "0.0.5" # this should be connected to the versions module
+version = "0.0.5" # this should be connected to the versions module
 year = date.today().strftime("%Y")
 
 # -- General configuration ---------------------------------------------------
