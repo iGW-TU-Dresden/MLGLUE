@@ -3,14 +3,28 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to the documentation of the MLGLUE Python package!
-==================================
+Introduction
+============
 
-.. toctree::
-   :maxdepth: 3
-   :caption: Contents:
+.. grid::
 
-   modules
+    .. grid-item-card:: User Guide
+        :link: userguide/index
+        :link-type: doc
+
+        User guide on installation and the basic concepts of MLGLUE.
+
+    .. grid-item-card:: Examples
+        :link: examples/index
+        :link-type: doc
+
+        Examples of MLGLUE in action.
+
+    .. grid-item-card:: Code Reference
+        :link: coderef/index
+        :link-type: doc
+
+        MLGLUE code reference.
 
 Indices and Tables
 ==================
