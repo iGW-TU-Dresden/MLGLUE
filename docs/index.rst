@@ -6,23 +6,17 @@
 Introduction
 ============
 
-.. grid::
+.. grid:: 3
 
     .. grid-item-card:: User Guide
-        :link: userguide/index
-        :link-type: doc
 
         User guide on installation and the basic concepts of MLGLUE.
 
     .. grid-item-card:: Examples
-        :link: examples/index
-        :link-type: doc
 
         Examples of MLGLUE in action.
 
     .. grid-item-card:: Code Reference
-        :link: coderef/index
-        :link-type: doc
 
         MLGLUE code reference.
 
