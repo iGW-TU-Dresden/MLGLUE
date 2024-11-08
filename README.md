@@ -16,7 +16,7 @@ A documentation webpage is available [here](https://mlglue.readthedocs.io/en/lat
 
 ```python
 def my_model(parameters, level, n_levels, obs_x, obs_y, likelihood, run_id)
-        """
+        '''
         Parameters
         ----------
         parameters : 1D list-like
@@ -43,7 +43,7 @@ def my_model(parameters, level, n_levels, obs_x, obs_y, likelihood, run_id)
                 the computed likelihood
         simulated_observation_equivalents : 1D list-like
                 the simulated equivalents of the observations
-        """
+        '''
 
         # your model code
         # using the function parameter_to_observable_map as a placeholder
