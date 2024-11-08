@@ -12,28 +12,37 @@ This Python package is an implementation of the Multilevel Generalized Likelihoo
 A documentation webpage is available [here](https://mlglue.readthedocs.io/en/latest/) or alternatively under `mlglue.readthedocs.io`.
 
 ## Usage
-`MLGLUE` requires the computational model to be given in the form of a function with a specific set of arguments and returns:
+`MLGLUE` requires the computational model to be given in the form of a callable with a specific set of arguments and returns:
 
 ```python
 def my_model(parameters, level, n_levels, obs_x, obs_y, likelihood, run_id)
         """
         Parameters
         ----------
-        # :param parameters: 1D list-like of model parameters
-        # :param level: int representing the 0-based level index
-        # :param n_levels: int representing the total number of levels
-        # :param obs_x: 1D list-like of virtual observation ordinates
-        #	(not actually used in computations)
-        # :param obs_y: 1D list-like of observations
-        # :param likelihood: an instance of an MLGLUE.Likelihoods
-        #	likelihood instance
-        # :param run_id: an int or str identifier for the model run
+        parameters : 1D list-like
+                the model parameters
+        level : int
+                the 0-based level index
+        n_levels : int
+                the total number of levels in the hierarchy
+        obs_x : 1D list-like
+                virtual observation ordinates (not actually used in
+                computations)
+        obs_y : 1D list-like
+                the observations with which to compute the
+                likelihood
+        likelihood : MLGLUE.Likelihoods instance
+        	an instance of any likelihood from MLGLUE.Likelihoods
+                with which to compute the likelihood
+        run_id : int or str
+                an identifier for the model run
 
         Returns
         -------
-        # :return computed_likelihood: the computed likelihood as float
-        # :return simulated_observation_equivalents: the simulated
-        #	equivalents of the observations
+        computed_likelihood : float
+                the computed likelihood
+        simulated_observation_equivalents : 1D list-like
+                the simulated equivalents of the observations
         """
 
         # your model code
