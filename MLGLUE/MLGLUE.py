@@ -846,19 +846,19 @@ class MLGLUE():
 
         try:
             if not np.array(ineq).all():
-                msg = ("\nThe variance inequality does not hold for all"
+                msg = ("\nThe mean value inequality does not hold for all"
                        "two subsequent levels!")
                 print(msg)
             else:
-                print("\nThe variance inequality holds between all two "
+                print("\nThe mean value inequality holds between all two "
                       "subsequent levels!")
         
             if not np.array(decay).all():
-                msg = ("The cross-level variance does not decay "
+                msg = ("The cross-level mean value does not decay "
                        "monotonically!")
                 print(msg)
             else:
-                print("The cross-level variance decays monotonically!")
+                print("The cross-level mean value decays monotonically!")
         
         except ValueError:
             if raise_error:
