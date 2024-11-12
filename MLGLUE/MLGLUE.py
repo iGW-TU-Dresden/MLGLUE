@@ -1515,8 +1515,14 @@ class MLGLUE():
             
             # perform sampling
             self.perform_MLGLUE_singlecore_sampling()
+
+        print("\n\nSampling finished.")
         
-        return self.selected_samples, self.likelihoods, self.results
+        return (
+            np.asarray(self.selected_samples),
+            np.asarray(self.likelihoods),
+            np.asarray(self.results)
+        )
 
     def estimate_uncertainty(self, quantiles=[0.01, 0.5, 0.99]):
         """Estimate simulation uncertainty.
