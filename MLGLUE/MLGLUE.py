@@ -305,6 +305,12 @@ class MLGLUE():
             levels (l-1, l) is larger than on level (l) and / or if the
             variances or mean values between levels do not decay
             monotonically.
+        include_bias : bool
+            Whether to include the computation of bias vectors or not. If
+            included (True), a likelihood must be used which accepts a
+            bias vector (e.g., InverseErrorVarianceLikelihood_bias). Bias
+            is computed for lower-level models w.r.t. the highest-level
+            model.
 
         Attributes
         ----------
@@ -469,6 +475,7 @@ class MLGLUE():
         self.results_analysis = [[] for i in range(self.n_levels)] # --> holds results from all levels during sampling
         self.results_analysis_tuning = [[] for i in range(self.n_levels)] # --> holds results from all levels during tuning
         self.highest_level_calls = [] # --> holds identifiers for highest level calls (1 corresponds to a highest level call)
+        self.bias = [] # --> holds bias vectors
 
         if thresholds is not None:
             self.thresholds = thresholds
@@ -889,6 +896,25 @@ class MLGLUE():
             self.thresholds.append(threshold)
             counter += 1
         print("\nThe calculated thresholds are: {}".format(self.thresholds))
+
+        return
+    
+    def calculate_initial_bias_estimate(self):
+        """ Calculate an intial estimate of the bias.
+
+        Calculate the intial estimate of the bias from tuning samples. This
+        results in a bias vector for each model level except for the
+        highest-level model. I.e., the bias is estimated w.r.t. the
+        highest-level model.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None        
+        """
 
         return
     
