@@ -977,16 +977,20 @@ class MLGLUE():
             likelihoods_re_level = []
             for i in range(len(self.samples_tuning)):
                 # re-calculate likelihood
-                lik = self.likelihood(
+                lik = self.likelihood.likelihood(
                     obs=self.obs,
                     sim=self.results_analysis_tuning[level, i, :],
                     bias=self.bias[level, :]
                 )
                 likelihoods_re_level.append(lik)
             likelihoods_re.append(likelihoods_re_level)
+        # append original likelihoods from highest level
+        likelihoods_re.append(self.likelihoods_tuning[-1, :])
 
         likelihoods_re = np.asarray(likelihoods_re)
         if likelihoods_re.shape != self.likelihoods_tuning.shape:
+            print(likelihoods_re.shape)
+            print(self.likelihoods_tuning.shape)
             print("The shapes don't match...")
 
         self.likelihoods_tuning = likelihoods_re
@@ -1596,6 +1600,7 @@ class MLGLUE():
                 
                 # we now need to re-calculate the likelihoods on all levels
                 # taking the bias into account
+                self.recalculate_likelihoods()
 
             # analyze variances and mean values
             if self.hierarchy_analysis == True:
@@ -1627,6 +1632,14 @@ class MLGLUE():
             self.likelihoods_tuning = np.asarray(
                 self.likelihoods_tuning
             )
+
+            if self.include_bias:
+                # if bias is included, compute the initial estimate
+                self.calculate_initial_bias_estimate()
+                
+                # we now need to re-calculate the likelihoods on all levels
+                # taking the bias into account
+                self.recalculate_likelihoods()
 
             # analyze variances and mean values
             if self.hierarchy_analysis == True:
