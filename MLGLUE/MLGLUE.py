@@ -975,7 +975,7 @@ class MLGLUE():
 
         for level in range(self.n_levels - 1):
             likelihoods_re_level = []
-            for i in range(len(self.samples_tuning)):
+            for i in range(len(self.results_analysis_tuning.shape[1])):
                 # re-calculate likelihood
                 lik = self.likelihood.likelihood(
                     obs=self.obs,
