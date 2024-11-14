@@ -1138,7 +1138,8 @@ class MLGLUE():
             n_levels=self.n_levels,
             obs=self.obs,
             likelihood=self.likelihood,
-            run_id=run_id
+            run_id=run_id,
+            bias=self.bias
             )
 
         # if something went wrong (i.e., the model either returned None or
@@ -1183,7 +1184,8 @@ class MLGLUE():
                         n_levels=self.n_levels,
                         obs=self.obs,
                         likelihood=self.likelihood,
-                        run_id=run_id
+                        run_id=run_id,
+                        bias=self.bias
                         )
 
                     # append the model results to the analysis data
@@ -1288,7 +1290,7 @@ class MLGLUE():
             n_levels=self.n_levels,
             obs=self.obs,
             likelihood=self.likelihood,
-            run_id=run_id
+            run_id=run_id,
             )
 
         # append likelihood value and results to internal data structures

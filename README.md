@@ -20,34 +20,36 @@ A documentation webpage is available [here](https://mlglue.readthedocs.io/en/lat
 `MLGLUE` requires the computational model to be given in the form of a callable with a specific set of arguments and returns:
 
 ```python
-def my_model(parameters, level, n_levels, obs_x, obs_y, likelihood, run_id)
+def my_model(parameters, level, n_levels, obs_x, obs_y, likelihood, run_id, bias)
         '''
         Parameters
         ----------
         parameters : 1D list-like
-                the model parameters
+                The model parameter vector.
         level : int
-                the 0-based level index
+                The 0-based level index.
         n_levels : int
-                the total number of levels in the hierarchy
-        obs_x : 1D list-like
-                virtual observation ordinates (not actually used in
-                computations)
-        obs_y : 1D list-like
-                the observations with which to compute the
-                likelihood
+                The total number of levels in the hierarchy.
+        obs : 1D list-like
+                The observations with which to compute the
+                likelihood.
         likelihood : MLGLUE.Likelihoods instance
         	an instance of any likelihood from MLGLUE.Likelihoods
-                with which to compute the likelihood
+                with which to compute the likelihood. If bias should be
+                included, a bias-enabled likelihood has to be used.
         run_id : int or str
-                an identifier for the model run
+                An identifier for the model run.
+        bias : 2D np.ndarray
+                The bias array of shape (n_levels, len(obs)) with level-
+                dependent bias vectors. Bias does not need to be included
+                in the computations but the argument has to be included.
 
         Returns
         -------
         computed_likelihood : float
-                the computed likelihood
+                The computed likelihood.
         simulated_observation_equivalents : 1D list-like
-                the simulated equivalents of the observations
+                The simulated equivalents of the observations.
         '''
 
         # your model code
