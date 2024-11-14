@@ -230,7 +230,8 @@ class MLGLUE():
             multiprocessing=False,
             n_processors=None,
             hierarchy_analysis=True,
-            savefigs="my_model"
+            savefigs="my_model",
+            include_bias=False
     ):
         """The MLGLUE class.
 
@@ -386,8 +387,7 @@ class MLGLUE():
             monotonically.
         selected_samples : 2D array-like of float
             The array of selected samples that are accepted on the highest
-            level; has individual samples as rows and variables / model
-            parameters as columns.
+            level; has shape (n_selected_samples, n_model_parameters)
         results : 2D array-like of float
             Holds simulated observation equivalents corresponding to all
             posterior samples; has shape (len(selected_samples), len(obs)).
@@ -399,9 +399,7 @@ class MLGLUE():
             Holds simulated observation equivalents corresponding to all
             tuning samples (except for tuning samples that result in an
             error or NaN returned by the model callable) on all levels;
-            has the tuning samples in the first dimension, the levels in
-            the second dimension, and the simulated values in the third
-            dimension.
+            has shape (n_levels, len(selected_samples_tuning), len(obs))
         likelihoods : 1D array-like of float
             The likelihood values correpsonding to the selected samples.
         normalized_likelihoods : 1D array-like of float
@@ -410,14 +408,23 @@ class MLGLUE():
         likelihoods_tuning : 2D array-like of float
             The likelihood values on all levels for all tuning samples
             (except for tuning samples that result in an error or NaN
-            returned by the model callable) on all levels; has the levels
-            in the rows and tuning samples in columns.
+            returned by the model callable) on all levels; has shape
+            (n_levels, len(selected_samples_tuning))
         highest_level_calls : 1D array-like of int
             A list with the number of ones equal to the number of calls
             made to the model on the highest level. This is implemented
             like that currently as a list can be shared across processes / 
             workers. A single variable (e.g., an int) could not be shared
-            this way. This will be improved in the future.        
+            this way. This will be improved in the future.
+        include_bias : bool
+            Whether to include the computation of bias vectors or not. If
+            included (True), a likelihood must be used which accepts a
+            bias vector (e.g., InverseErrorVarianceLikelihood_bias). Bias
+            is computed for lower-level models w.r.t. the highest-level
+            model.
+        bias : 2D array-like of float
+            Holds the bias vectors for all levels. Has shape (n_levels,
+            len(obs)).
         
         Notes
         -----
@@ -465,6 +472,7 @@ class MLGLUE():
         self.n_processors = n_processors
         self.hierarchy_analysis = hierarchy_analysis
         self.savefigs = savefigs
+        self.include_bias = include_bias
 
         # initialize output data structures
         self.normalized_likelihoods = None
@@ -475,7 +483,7 @@ class MLGLUE():
         self.results_analysis = [[] for i in range(self.n_levels)] # --> holds results from all levels during sampling
         self.results_analysis_tuning = [[] for i in range(self.n_levels)] # --> holds results from all levels during tuning
         self.highest_level_calls = [] # --> holds identifiers for highest level calls (1 corresponds to a highest level call)
-        self.bias = [] # --> holds bias vectors
+        self.bias = None # --> holds bias vectors
 
         if thresholds is not None:
             self.thresholds = thresholds
@@ -588,10 +596,6 @@ class MLGLUE():
         -------
         None
         """
-
-        # transform list of likelihoods to numpy array to be able to use
-        # array operations later
-        self.likelihoods_tuning = np.asarray(self.likelihoods_tuning)
 
         # get number of likelihoods in every level
         # this number is identical on every level
@@ -762,10 +766,6 @@ class MLGLUE():
         None
         """
 
-        # transform list of likelihoods to numpy array to be able to use
-        # array operations later
-        self.likelihoods_tuning = np.asarray(self.likelihoods_tuning)
-
         # get number of likelihoods in every level
         # this number is identical on every level
         n_vals = len(self.likelihoods_tuning[0, :])
@@ -915,6 +915,81 @@ class MLGLUE():
         -------
         None        
         """
+
+        # mu_k represents the bias w.r.t. the next higher level, computed
+        # as the mean of the differences in results using all available
+        # tuning results
+        # initialize the data structure
+        mu_k = []
+        for k in range(self.n_levels - 1):
+            mu_k_ = np.mean(
+                (
+                    self.results_analysis_tuning[k+1, :, :] -
+                    self.results_analysis_tuning[k, :, :]
+                ),
+                axis=0
+            )
+            mu_k.append(mu_k_)
+        
+        # convert to numpy array
+        mu_k = np.asarray(mu_k)
+
+        # mu_B_l represents the total bias on any level w.r.t. the
+        # highest-level model; it is the sum over bias on subsequent levels
+        # starting from the lowest level
+        # initialize data structure
+        mu_B_l = []
+        for l in range(self.n_levels - 1):
+            mu_B_l.append(np.sum(mu_k[l:, :], axis=0))
+
+        # append zeros for highest level as there is no bias
+        mu_B_l.append(np.zeros_like(mu_k[0]))
+        # convert to numpy array
+        mu_B_l = np.asarray(mu_B_l)
+
+        # set attribute
+        self.bias = mu_B_l
+
+        return
+    
+    def recalculate_likelihoods(self):
+        """ Re-calculate likelihoods, accounting for bias.
+
+        Re-calculate likelihoods while accounting for the bias from the
+        initial estimate after tuning. During tuning, likelihoods are
+        computed without accounting for bias. In order to include the bias-
+        adapted likelihoods for hierarchy analysis and threshold
+        computation, they need to be re-calculated.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None 
+        """
+
+        # initialize data structure
+        likelihoods_re = []
+
+        for level in range(self.n_levels - 1):
+            likelihoods_re_level = []
+            for i in range(len(self.samples_tuning)):
+                # re-calculate likelihood
+                lik = self.likelihood(
+                    obs=self.obs,
+                    sim=self.results_analysis_tuning[level, i, :],
+                    bias=self.bias[level, :]
+                )
+                likelihoods_re_level.append(lik)
+            likelihoods_re.append(likelihoods_re_level)
+
+        likelihoods_re = np.asarray(likelihoods_re)
+        if likelihoods_re.shape != self.likelihoods_tuning.shape:
+            print("The shapes don't match...")
+
+        self.likelihoods_tuning = likelihoods_re
 
         return
     
@@ -1505,6 +1580,23 @@ class MLGLUE():
             if self.thresholds_predefined == False:
                 self.perform_MLGLUE_multiprocessing_tuning()
 
+            # make results_analysis_tuning a numpy array
+            self.results_analysis_tuning = np.asarray(
+                self.results_analysis_tuning
+            )
+
+            # make likelihoods_tuning a numpy array
+            self.likelihoods_tuning = np.asarray(
+                self.likelihoods_tuning
+            )
+
+            if self.include_bias:
+                # if bias is included, compute the initial estimate
+                self.calculate_initial_bias_estimate()
+                
+                # we now need to re-calculate the likelihoods on all levels
+                # taking the bias into account
+
             # analyze variances and mean values
             if self.hierarchy_analysis == True:
                 self.analyze_variances_likelihoods(raise_error=True)
@@ -1526,6 +1618,16 @@ class MLGLUE():
             if self.thresholds_predefined == False:
                 self.perform_MLGLUE_singlecore_tuning()
 
+            # make results_analysis_tuning a numpy array
+            self.results_analysis_tuning = np.asarray(
+                self.results_analysis_tuning
+            )
+
+            # make likelihoods_tuning a numpy array
+            self.likelihoods_tuning = np.asarray(
+                self.likelihoods_tuning
+            )
+
             # analyze variances and mean values
             if self.hierarchy_analysis == True:
                 self.analyze_variances_likelihoods(raise_error=True)
@@ -1543,11 +1645,25 @@ class MLGLUE():
             self.perform_MLGLUE_singlecore_sampling()
 
         print("\n\nSampling finished.")
+
+        # convert data to arrays
+        self.selected_samples = np.array(
+            self.selected_samples
+        )
+        self.likelihoods = np.asarray(
+            self.likelihoods
+        )
+        self.results = np.asarray(
+            self.results
+        )
+        self.results_analysis = np.asarray(
+            self.results_analysis
+        )
         
         return (
-            np.asarray(self.selected_samples),
-            np.asarray(self.likelihoods),
-            np.asarray(self.results)
+            self.selected_samples,
+            self.likelihoods,
+            self.results
         )
 
     def estimate_uncertainty(self, quantiles=[0.01, 0.5, 0.99]):
