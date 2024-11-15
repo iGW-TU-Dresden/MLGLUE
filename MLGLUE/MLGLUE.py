@@ -488,6 +488,15 @@ class MLGLUE():
         if thresholds is not None:
             self.thresholds = thresholds
             self.thresholds_predefined = True
+
+            # print warning to screen if bias should be included
+            if self.include_bias:
+                print("- - - -\n")
+                print("- -\n")
+                print("If bias should be included, thresholds cannot be \
+                      pre-defined.\n")
+                print("- -\n")
+                print("- - - -\n")
         else:
             self.thresholds = []
             self.thresholds_predefined = False
@@ -890,16 +899,14 @@ class MLGLUE():
         None
         """
 
-        counter = 0
         for level in self.likelihoods_tuning:
             threshold = np.quantile(level, 1 - self.likelihood.threshold)
             self.thresholds.append(threshold)
-            counter += 1
         print("\nThe calculated thresholds are: {}".format(self.thresholds))
 
         return
     
-    def calculate_initial_bias_estimate(self):
+    def calculate_initial_bias_estimate_old(self):
         """ Calculate an intial estimate of the bias.
 
         Calculate the intial estimate of the bias from tuning samples. This
@@ -951,6 +958,82 @@ class MLGLUE():
         self.bias = mu_B_l
 
         return
+    
+    def calculate_initial_bias_estimate(self):
+        """Calculate an initial estimate of the bias with likelihood filtering.
+
+        This function computes the initial bias estimates from tuning samples,
+        considering only those samples where the likelihood is above the
+        level-dependent threshold across all levels. The bias is estimated
+        with respect to the highest-level model.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+
+        # Step 1: Create a mask for samples where all likelihoods are above thresholds
+        # Shape of self.likelihoods_tuning: [n_levels, n_samples]
+        # Shape of self.thresholds: [n_levels]
+        # Broadcasting thresholds to match likelihoods shape for comparison
+        likelihood_mask = self.likelihoods_tuning > self.thresholds[:, np.newaxis]
+        
+        # Combine masks across all levels using logical AND to ensure all are above thresholds
+        # Resulting mask shape: [n_samples]
+        valid_samples_mask = np.all(likelihood_mask, axis=0)
+        
+        # Debug: Print number of valid samples
+        print(f"Number of valid samples after filtering: {np.sum(valid_samples_mask)} out of {self.likelihoods_tuning.shape[1]}")
+
+        # Step 2: Apply the mask to filter results
+        # Assuming self.results_analysis_tuning has shape [n_levels, n_samples, ...]
+        # We need to preserve all dimensions after n_levels and n_samples
+        # For example, if it's [n_levels, n_samples, n_features], we keep n_features
+        # The filtered results will have shape [n_levels, n_valid_samples, ...]
+        filtered_results = self.results_analysis_tuning[:, valid_samples_mask, ...]
+        
+        # Optional: Handle case with no valid samples
+        if filtered_results.shape[1] == 0:
+            raise ValueError("No samples passed the likelihood threshold filtering.")
+
+        # Step 3: Calculate pairwise biases (mu_k) between adjacent levels
+        mu_k = []
+        for k in range(self.n_levels - 1):
+            # Difference between level k+1 and level k
+            diff = filtered_results[k+1, :, :] - filtered_results[k, :, :]
+            
+            # Compute mean across samples (axis=0)
+            mu_k_ = np.mean(diff, axis=0)
+            mu_k.append(mu_k_)
+
+        # Convert mu_k list to a NumPy array
+        mu_k = np.asarray(mu_k)  # Shape: [n_levels - 1, ...]
+        
+        # Step 4: Aggregate total bias relative to the highest level (mu_B_l)
+        mu_B_l = []
+        for l in range(self.n_levels - 1):
+            # Sum biases from level l to the second-highest level
+            # mu_k[l:, :] has shape [n_levels - 1 - l, ...]
+            cumulative_bias = np.sum(mu_k[l:, :], axis=0)
+            mu_B_l.append(cumulative_bias)
+
+        # Append zeros for the highest level as it has no bias
+        # Shape should match the bias vectors, e.g., [...], so use zeros_like
+        highest_level_zero = np.zeros_like(mu_k[0])
+        mu_B_l.append(highest_level_zero)
+        
+        # Convert mu_B_l list to a NumPy array
+        mu_B_l = np.asarray(mu_B_l)  # Shape: [n_levels, ...]
+        
+        # Step 5: Assign the computed bias to the instance attribute
+        self.bias = mu_B_l
+
+        return
+
     
     def recalculate_likelihoods(self):
         """ Re-calculate likelihoods, accounting for bias.
@@ -1596,36 +1679,48 @@ class MLGLUE():
             if self.thresholds_predefined == False:
                 self.perform_MLGLUE_multiprocessing_tuning()
 
-            # make results_analysis_tuning a numpy array
-            self.results_analysis_tuning = np.asarray(
-                self.results_analysis_tuning
-            )
+                # this is how it should be with the bias estimation:
+                #   - standard tuning
+                #   - standard hierarchy analysis
+                #   - standard threshold computation
+                #   - bias estimation only with samples for which the
+                #       likelihood is ABOVE the level-dependent threshold
+                #       (those can be different samples on different levels)
+                #   - new hierarchy analysis (not necessary)
+                #   - new threshold analysis
+                #   - sampling
 
-            # make likelihoods_tuning a numpy array
-            self.likelihoods_tuning = np.asarray(
-                self.likelihoods_tuning
-            )
+                # make results_analysis_tuning a numpy array
+                self.results_analysis_tuning = np.asarray(
+                    self.results_analysis_tuning
+                )
 
-            if self.include_bias:
-                # if bias is included, compute the initial estimate
-                self.calculate_initial_bias_estimate()
-                
-                # we now need to re-calculate the likelihoods on all levels
-                # taking the bias into account
-                self.recalculate_likelihoods()
+                # make likelihoods_tuning a numpy array
+                self.likelihoods_tuning = np.asarray(
+                    self.likelihoods_tuning
+                )
 
-            # analyze variances and mean values
-            if self.hierarchy_analysis == True:
-                self.analyze_variances_likelihoods(raise_error=True)
-                self.analyze_means_likelihoods(raise_error=True)
-            elif self.hierarchy_analysis is False:
-                self.analyze_variances_likelihoods(raise_error=False)
-                self.analyze_means_likelihoods(raise_error=False)
-            else:
-                print("No valid variance analysis methodology selected; "
-                      "continuing without analysis!")
-            # compute thresholds
-            self.calculate_thresholds()
+                # hierarchy analysis
+                self.analyze_variances_likelihoods(
+                    raise_error=self.hierarchy_analysis
+                )
+                self.analyze_means_likelihoods(
+                    raise_error=self.hierarchy_analysis
+                )
+
+                # compute thresholds
+                self.calculate_thresholds()
+
+                if self.include_bias:
+                    # if bias is included, compute the initial estimate
+                    self.calculate_initial_bias_estimate()
+                    
+                    # we now need to re-calculate the likelihoods on all levels
+                    # taking the bias into account
+                    self.recalculate_likelihoods()
+
+                    # new threshold analysis
+
             
             # perform sampling
             self.perform_MLGLUE_multiprocessing_sampling()
@@ -1635,41 +1730,39 @@ class MLGLUE():
             if self.thresholds_predefined == False:
                 self.perform_MLGLUE_singlecore_tuning()
 
-            # make results_analysis_tuning a numpy array
-            self.results_analysis_tuning = np.asarray(
-                self.results_analysis_tuning
-            )
+                # make results_analysis_tuning a numpy array
+                self.results_analysis_tuning = np.asarray(
+                    self.results_analysis_tuning
+                )
 
-            # make likelihoods_tuning a numpy array
-            self.likelihoods_tuning = np.asarray(
-                self.likelihoods_tuning
-            )
+                # make likelihoods_tuning a numpy array
+                self.likelihoods_tuning = np.asarray(
+                    self.likelihoods_tuning
+                )
 
-            if self.include_bias:
-                # if bias is included, compute the initial estimate
-                self.calculate_initial_bias_estimate()
-                
-                # we now need to re-calculate the likelihoods on all levels
-                # taking the bias into account
-                self.recalculate_likelihoods()
+                # hierarchy analysis
+                self.analyze_variances_likelihoods(
+                    raise_error=self.hierarchy_analysis
+                )
+                self.analyze_means_likelihoods(
+                    raise_error=self.hierarchy_analysis
+                )
 
-            # analyze variances and mean values
-            if self.hierarchy_analysis == True:
-                self.analyze_variances_likelihoods(raise_error=True)
-                self.analyze_means_likelihoods(raise_error=True)
-            elif self.hierarchy_analysis is False:
-                self.analyze_variances_likelihoods(raise_error=False)
-                self.analyze_means_likelihoods(raise_error=False)
-            else:
-                print("No valid variance analysis methodology selected; "
-                      "continuing without analysis!")
-            # compute thresholds
-            self.calculate_thresholds()
+                # compute thresholds
+                self.calculate_thresholds()
+
+                if self.include_bias:
+                    # if bias is included, compute the initial estimate
+                    self.calculate_initial_bias_estimate()
+                    
+                    # we now need to re-calculate the likelihoods on all levels
+                    # taking the bias into account
+                    self.recalculate_likelihoods()
             
             # perform sampling
             self.perform_MLGLUE_singlecore_sampling()
 
-        print("\n\nSampling finished.")
+        print("\n\nSampling finished.\n\n")
 
         # convert data to arrays
         self.selected_samples = np.array(
