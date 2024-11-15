@@ -980,29 +980,13 @@ class MLGLUE():
         None
         """
 
-        # Step 1: Create a mask for samples where all likelihoods are above thresholds
-        # Shape of self.likelihoods_tuning: [n_levels, n_samples]
-        # Shape of self.thresholds: [n_levels]
-        # Broadcasting thresholds to match likelihoods shape for comparison
-        likelihood_mask = self.likelihoods_tuning > self.thresholds[:, np.newaxis]
-        
-        # Combine masks across all levels using logical AND to ensure all are above thresholds
-        # Resulting mask shape: [n_samples]
-        valid_samples_mask = np.all(likelihood_mask, axis=0)
-        
-        # Debug: Print number of valid samples
-        print(f"Number of valid samples after filtering: {np.sum(valid_samples_mask)} out of {self.likelihoods_tuning.shape[1]}")
+        mask = self.likelihoods_tuning >= self.thresholds[:, np.newaxis]
+        mask_transposed = mask.T
+        samples_all_levels = np.all(mask_transposed, axis=1)
+        results = self.results_analysis_tuning.copy()
+        filtered_results = results[:, samples_all_levels, :]
 
-        # Step 2: Apply the mask to filter results
-        # Assuming self.results_analysis_tuning has shape [n_levels, n_samples, ...]
-        # We need to preserve all dimensions after n_levels and n_samples
-        # For example, if it's [n_levels, n_samples, n_features], we keep n_features
-        # The filtered results will have shape [n_levels, n_valid_samples, ...]
-        filtered_results = self.results_analysis_tuning[:, valid_samples_mask, ...]
-        
-        # Optional: Handle case with no valid samples
-        if filtered_results.shape[1] == 0:
-            raise ValueError("No samples passed the likelihood threshold filtering.")
+        print("filtered results shape: ", filtered_results.shape)
 
         # Step 3: Calculate pairwise biases (mu_k) between adjacent levels
         mu_k = []
