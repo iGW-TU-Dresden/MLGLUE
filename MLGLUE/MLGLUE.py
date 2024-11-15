@@ -910,13 +910,18 @@ class MLGLUE():
 
         return
     
-    def calculate_initial_bias_estimate_old(self):
+    def calculate_initial_bias_estimate(self):
         """ Calculate an intial estimate of the bias.
 
         Calculate the intial estimate of the bias from tuning samples. This
         results in a bias vector for each model level except for the
         highest-level model. I.e., the bias is estimated w.r.t. the
-        highest-level model.
+        highest-level model. Note that only results are considered for
+        which the likelihood is above the level-dependent threshold on all
+        levels. If there is strong bias or if the number of tuning samples
+        is small or if the threshold fraction is small, possibly only a
+        small number of samples can be included for bias estimation (or
+        sometimes even no samples at all).
 
         Parameters
         ----------
@@ -927,97 +932,50 @@ class MLGLUE():
         None        
         """
 
-        # mu_k represents the bias w.r.t. the next higher level, computed
-        # as the mean of the differences in results using all available
-        # tuning results
-        # initialize the data structure
-        mu_k = []
-        for k in range(self.n_levels - 1):
-            mu_k_ = np.mean(
-                (
-                    self.results_analysis_tuning[k+1, :, :] -
-                    self.results_analysis_tuning[k, :, :]
-                ),
-                axis=0
-            )
-            mu_k.append(mu_k_)
-        
-        # convert to numpy array
-        mu_k = np.asarray(mu_k)
-
-        # mu_B_l represents the total bias on any level w.r.t. the
-        # highest-level model; it is the sum over bias on subsequent levels
-        # starting from the lowest level
-        # initialize data structure
-        mu_B_l = []
-        for l in range(self.n_levels - 1):
-            mu_B_l.append(np.sum(mu_k[l:, :], axis=0))
-
-        # append zeros for highest level as there is no bias
-        mu_B_l.append(np.zeros_like(mu_k[0]))
-        # convert to numpy array
-        mu_B_l = np.asarray(mu_B_l)
-
-        # set attribute
-        self.bias = mu_B_l
-
-        return
-    
-    def calculate_initial_bias_estimate(self):
-        """Calculate an initial estimate of the bias with likelihood filtering.
-
-        This function computes the initial bias estimates from tuning samples,
-        considering only those samples where the likelihood is above the
-        level-dependent threshold across all levels. The bias is estimated
-        with respect to the highest-level model.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-
+        # create a mask of likelihood thresholds
         mask = self.likelihoods_tuning >= self.thresholds[:, np.newaxis]
-        mask_transposed = mask.T
-        samples_all_levels = np.all(mask_transposed, axis=1)
+        mask = mask.T
+        # get sample indices for thich the likelihood is above the level-
+        # dependent threshold on all levels
+        samples_all_levels = np.all(mask, axis=1)
+        # copy results and get filtered values
         results = self.results_analysis_tuning.copy()
         filtered_results = results[:, samples_all_levels, :]
 
-        print("filtered results shape: ", filtered_results.shape)
+        # check if there are samples to compute bias with
+        if filtered_results.chape[1] == 0:
+            print("\n\nThere are no samples to compute the bias with.\n\n")
+            return
 
-        # Step 3: Calculate pairwise biases (mu_k) between adjacent levels
+        # calculate pairwise biases (mu_k) between adjacent levels
         mu_k = []
         for k in range(self.n_levels - 1):
-            # Difference between level k+1 and level k
+            # difference between level k+1 and level k
             diff = filtered_results[k+1, :, :] - filtered_results[k, :, :]
             
-            # Compute mean across samples (axis=0)
+            # mompute mean across samples
             mu_k_ = np.mean(diff, axis=0)
             mu_k.append(mu_k_)
 
-        # Convert mu_k list to a NumPy array
-        mu_k = np.asarray(mu_k)  # Shape: [n_levels - 1, ...]
+        # convert mu_k list to a numpy array
+        mu_k = np.asarray(mu_k)
         
-        # Step 4: Aggregate total bias relative to the highest level (mu_B_l)
+        # aggregate total bias relative to the highest level (mu_B_l)
         mu_B_l = []
         for l in range(self.n_levels - 1):
-            # Sum biases from level l to the second-highest level
+            # sum biases from level l to the second-highest level
             # mu_k[l:, :] has shape [n_levels - 1 - l, ...]
             cumulative_bias = np.sum(mu_k[l:, :], axis=0)
             mu_B_l.append(cumulative_bias)
 
-        # Append zeros for the highest level as it has no bias
-        # Shape should match the bias vectors, e.g., [...], so use zeros_like
+        # append zeros for the highest level as it has no bias
         highest_level_zero = np.zeros_like(mu_k[0])
         mu_B_l.append(highest_level_zero)
         
-        # Convert mu_B_l list to a NumPy array
-        mu_B_l = np.asarray(mu_B_l)  # Shape: [n_levels, ...]
+        # convert mu_B_l list to a numpy array
+        mu_B_l = np.asarray(mu_B_l)
         
-        # Step 5: Assign the computed bias to the instance attribute
+        # assign the computed bias to the instance attribute
         self.bias = mu_B_l
 
         return
