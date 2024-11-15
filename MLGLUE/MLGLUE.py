@@ -899,9 +899,13 @@ class MLGLUE():
         None
         """
 
+        thresholds = []
         for level in self.likelihoods_tuning:
             threshold = np.quantile(level, 1 - self.likelihood.threshold)
-            self.thresholds.append(threshold)
+            thresholds.append(threshold)
+
+        thresholds = np.asarray(thresholds)
+        self.thresholds = thresholds
         print("\nThe calculated thresholds are: {}".format(self.thresholds))
 
         return
