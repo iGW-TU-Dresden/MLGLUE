@@ -55,7 +55,7 @@ class InverseErrorVarianceLikelihood():
 
         return
 
-    def likelihood(self, obs=None, sim=None):
+    def likelihood(self, obs=None, sim=None, bias=None):
         """Compute the Inverse Variance Likelihood
         
         Compute the Inverse Variance Likelihood: 
@@ -73,6 +73,8 @@ class InverseErrorVarianceLikelihood():
             The observations of the system.
         sim : 1D array-like of float
             The simulated observation equivalents, simulated by the model.
+        bias
+            Not implemented for this likelihood.
 
         Returns
         -------
@@ -333,7 +335,7 @@ class RelativeVarianceLikelihood():
 
         return
 
-    def likelihood(self, obs=None, sim=None):
+    def likelihood(self, obs=None, sim=None, bias=None):
         """Compute the Relative Variance Likelihood
         
         Compute the Relative Variance Likelihood:
@@ -351,6 +353,8 @@ class RelativeVarianceLikelihood():
             The observations of the system.
         sim : 1D array-like of float
             The simulated observation equivalents, simulated by the model.
+        bias
+            Not implemented for this likelihood.
 
         Returns
         -------
@@ -463,7 +467,7 @@ class GaussianLogLikelihood():
 
         return
 
-    def likelihood(self, obs=None, sim=None):
+    def likelihood(self, obs=None, sim=None, bias=None):
         """Compute the Gaussian log-likelihood
         
         Compute the Gaussian log-likelihood: 
@@ -482,6 +486,8 @@ class GaussianLogLikelihood():
             The observations of the system.
         sim : 1D array-like of float
             The simulated observation equivalents, simulated by the model.
+        bias
+            Not implemented for this likelihood.
 
         Returns
         -------
