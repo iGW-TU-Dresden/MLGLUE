@@ -20,7 +20,7 @@ A documentation webpage is available [here](https://mlglue.readthedocs.io/en/lat
 `MLGLUE` requires the computational model to be given in the form of a callable with a specific set of arguments and returns:
 
 ```python
-def my_model(parameters, level, n_levels, obs_x, obs_y, likelihood, run_id, bias)
+def my_model(parameters, level, n_levels, run_id)
         '''
         Parameters
         ----------
@@ -30,24 +30,11 @@ def my_model(parameters, level, n_levels, obs_x, obs_y, likelihood, run_id, bias
                 The 0-based level index.
         n_levels : int
                 The total number of levels in the hierarchy.
-        obs : 1D list-like
-                The observations with which to compute the
-                likelihood.
-        likelihood : MLGLUE.Likelihoods instance
-        	an instance of any likelihood from MLGLUE.Likelihoods
-                with which to compute the likelihood. If bias should be
-                included, a bias-enabled likelihood has to be used.
         run_id : int or str
                 An identifier for the model run.
-        bias : 2D np.ndarray
-                The bias array of shape (n_levels, len(obs)) with level-
-                dependent bias vectors. Bias does not need to be included
-                in the computations but the argument has to be included.
 
         Returns
         -------
-        computed_likelihood : float
-                The computed likelihood.
         simulated_observation_equivalents : 1D list-like
                 The simulated equivalents of the observations.
         '''
@@ -59,13 +46,7 @@ def my_model(parameters, level, n_levels, obs_x, obs_y, likelihood, run_id, bias
         	parameters
         	)
 
-        # compute likelihood
-        computed_likelihood = likelihood.likelihood(
-        	obs=obs,
-        	sim=simulated_observation_equivalents
-        	)
-
-        return computed_likelihood, simulated_observation_equivalents
+        return simulated_observation_equivalents
 ```
 
 See the examples directory for a working implementation.

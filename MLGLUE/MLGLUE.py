@@ -884,7 +884,7 @@ class MLGLUE():
 
         return
 
-    def calculate_thresholds(self):
+    def calculate_thresholds(self, including_bias=False):
         """ Calculate likelihood thresholds
         
         Calculate the thresholds according to the threshold fraction given
@@ -906,7 +906,15 @@ class MLGLUE():
 
         thresholds = np.asarray(thresholds)
         self.thresholds = thresholds
-        print("\nThe calculated thresholds are: {}".format(self.thresholds))
+
+        print(
+            "\nThe calculated thresholds are: {}".format(
+                self.thresholds
+            )
+        )
+
+        if including_bias:
+            print("Re-calculated after including bias.")        
 
         return
     
