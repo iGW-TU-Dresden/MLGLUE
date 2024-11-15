@@ -7,4 +7,4 @@ Here you can see MLGLUE in action for a number of example problems. Keep coming 
     :maxdepth: 2
     :caption: Example Notebooks
 
-    examples/EX01_hydrological_model
+    EX01_hydrological_model
