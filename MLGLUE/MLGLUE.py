@@ -979,7 +979,6 @@ class MLGLUE():
         self.bias = mu_B_l
 
         return
-
     
     def recalculate_likelihoods(self):
         """ Re-calculate likelihoods, accounting for bias.
@@ -1666,7 +1665,7 @@ class MLGLUE():
                     self.recalculate_likelihoods()
 
                     # new threshold analysis
-
+                    self.calculate_thresholds()
             
             # perform sampling
             self.perform_MLGLUE_multiprocessing_sampling()
@@ -1704,6 +1703,9 @@ class MLGLUE():
                     # we now need to re-calculate the likelihoods on all levels
                     # taking the bias into account
                     self.recalculate_likelihoods()
+
+                    # new threshold analysis
+                    self.calculate_thresholds()
             
             # perform sampling
             self.perform_MLGLUE_singlecore_sampling()
