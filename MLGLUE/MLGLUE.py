@@ -483,7 +483,7 @@ class MLGLUE():
         self.results_analysis = [[] for i in range(self.n_levels)] # --> holds results from all levels during sampling
         self.results_analysis_tuning = [[] for i in range(self.n_levels)] # --> holds results from all levels during tuning
         self.highest_level_calls = [] # --> holds identifiers for highest level calls (1 corresponds to a highest level call)
-        self.bias = None # --> holds bias vectors
+        self.bias = np.zeros((self.n_levels, len(self.obs))) # --> holds bias vectors
 
         if thresholds is not None:
             self.thresholds = thresholds
@@ -1141,7 +1141,7 @@ class MLGLUE():
         likelihood_ = self.likelihood.likelihood(
             obs=self.obs,
             sim=results,
-            bias=self.bias
+            bias=self.bias[level_, :]
         )
 
         # if something went wrong (i.e., the model either returned None or
@@ -1182,14 +1182,14 @@ class MLGLUE():
                     # again
                     results = self.model(
                         parameters=sample,
-                        level=level_,
+                        level=level__,
                         n_levels=self.n_levels,
                         run_id=run_id,
                         )
                     likelihood_ = self.likelihood.likelihood(
                         obs=self.obs,
                         sim=results,
-                        bias=self.bias
+                        bias=self.bias[level__, :]
                     )
 
                     # append the model results to the analysis data
@@ -1297,7 +1297,7 @@ class MLGLUE():
         likelihood_ = self.likelihood.likelihood(
             obs=self.obs,
             sim=results,
-            bias=self.bias
+            bias=self.bias[level_, :]
         )
 
         # append likelihood value and results to internal data structures
@@ -1309,14 +1309,14 @@ class MLGLUE():
         for level__ in range(1, self.n_levels):
             results = self.model(
                 parameters=sample,
-                level=level_,
+                level=level__,
                 n_levels=self.n_levels,
                 run_id=run_id,
                 )
             likelihood_ = self.likelihood.likelihood(
                 obs=self.obs,
                 sim=results,
-                bias=self.bias
+                bias=self.bias[level__, :]
             )
 
             # append likelihood value and results to internal data
