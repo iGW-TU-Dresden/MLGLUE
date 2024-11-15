@@ -1,5 +1,4 @@
 from .MLGLUE import MLGLUE
 from .Likelihoods import InverseErrorVarianceLikelihood, \
-    RelativeVarianceLikelihood, GaussianLogLikelihood, \
-    InverseErrorVarianceLikelihood_bias
+    RelativeVarianceLikelihood, GaussianLogLikelihood
 from .version import __version__
