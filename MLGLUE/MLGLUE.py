@@ -943,7 +943,7 @@ class MLGLUE():
         filtered_results = results[:, samples_all_levels, :]
 
         # check if there are samples to compute bias with
-        if filtered_results.chape[1] == 0:
+        if filtered_results.shape[1] == 0:
             print("\n\nThere are no samples to compute the bias with.\n\n")
             return
 
