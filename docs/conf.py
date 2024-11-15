@@ -35,6 +35,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx_design",
     "sphinx.ext.autosectionlabel",
+    "nbsphinx"
 ]
 
 templates_path = ['_templates']
