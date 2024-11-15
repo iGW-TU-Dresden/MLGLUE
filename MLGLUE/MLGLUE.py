@@ -1132,15 +1132,17 @@ class MLGLUE():
         # evaluate the model on level 0 using the given parameter sample
         # and using the model callable from the corresponding instance
         # attribute
-        likelihood_, results = self.model(
+        results = self.model(
             parameters=sample,
             level=level_,
             n_levels=self.n_levels,
-            obs=self.obs,
-            likelihood=self.likelihood,
             run_id=run_id,
-            bias=self.bias
             )
+        likelihood_ = self.likelihood.likelihood(
+            obs=self.obs,
+            sim=results,
+            bias=self.bias
+        )
 
         # if something went wrong (i.e., the model either returned None or
         # the initial value of results is still None), return None to
@@ -1178,15 +1180,17 @@ class MLGLUE():
                     # if the likelihood was above a threshold in the lower
                     # level, go up one level and compute the likelihood
                     # again
-                    likelihood_, results = self.model(
+                    results = self.model(
                         parameters=sample,
-                        level=level__,
+                        level=level_,
                         n_levels=self.n_levels,
-                        obs=self.obs,
-                        likelihood=self.likelihood,
                         run_id=run_id,
-                        bias=self.bias
                         )
+                    likelihood_ = self.likelihood.likelihood(
+                        obs=self.obs,
+                        sim=results,
+                        bias=self.bias
+                    )
 
                     # append the model results to the analysis data
                     # structure
@@ -1284,14 +1288,17 @@ class MLGLUE():
         # evaluate the model on level 0 using the given parameter sample
         # and using the model callable from the corresponding instance
         # attribute
-        likelihood_, results = self.model(
+        results = self.model(
             parameters=sample,
             level=level_,
             n_levels=self.n_levels,
-            obs=self.obs,
-            likelihood=self.likelihood,
             run_id=run_id,
             )
+        likelihood_ = self.likelihood.likelihood(
+            obs=self.obs,
+            sim=results,
+            bias=self.bias
+        )
 
         # append likelihood value and results to internal data structures
         # the case where the likelihood is None etc. is handeled below
@@ -1300,14 +1307,17 @@ class MLGLUE():
 
         # start passing the sample through the model hierarchy
         for level__ in range(1, self.n_levels):
-            likelihood_, results = self.model(
+            results = self.model(
                 parameters=sample,
-                level=level__,
+                level=level_,
                 n_levels=self.n_levels,
-                obs=self.obs,
-                likelihood=self.likelihood,
-                run_id=run_id
+                run_id=run_id,
                 )
+            likelihood_ = self.likelihood.likelihood(
+                obs=self.obs,
+                sim=results,
+                bias=self.bias
+            )
 
             # append likelihood value and results to internal data
             # structures the case where the likelihood is None etc. is

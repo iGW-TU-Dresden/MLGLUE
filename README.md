@@ -61,7 +61,7 @@ def my_model(parameters, level, n_levels, obs_x, obs_y, likelihood, run_id, bias
 
         # compute likelihood
         computed_likelihood = likelihood.likelihood(
-        	obs=obs_y,
+        	obs=obs,
         	sim=simulated_observation_equivalents
         	)
 
