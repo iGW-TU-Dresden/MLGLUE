@@ -1,18 +1,20 @@
 import numpy as np
-
+    
 class InverseErrorVarianceLikelihood():
     def __init__(self, threshold=0.1, T=2., weights=None):
-        """The Inverse Variance Likelihood class.
+        """The Inverse Variance Likelihood classwith bias term.
 
         This class represents the Inverse Variance Likelihood function with
-        its utilities. It is computed as
+        a bias term along its utilities. It is computed as
 
-        .. math:: L(\\theta | Y) = (\\sigma_e^2)^{-T}
+        .. math::
+            L_{\\ell}(\\theta | Y') = \\left( \\frac{\\sum_{j=1}^m (y_j - y'_j + \\mu_{B,\\ell,j} )^2}{m - 2} \\right)^{-T}
 
         where :math:`L(\\cdot)` is the likelihood function,
-        :math:`\\theta` are model parameters, :math:`Y` are observations,
-        :math:`\\sigma_e^2` is the error or residual variance, and
-        :math:`T` is the shape parameter.
+        :math:`\\theta` are model parameters, :math:`Y'` are observations,
+        :math:`\\mu_{B,\\ell}` is the bias up to level :math:`\\ell`,
+        :math:`m` is the number of observations, and :math:`T` is the shape
+        parameter.
 
         Parameters
         ----------
@@ -55,17 +57,19 @@ class InverseErrorVarianceLikelihood():
 
         return
 
-    def likelihood(self, obs=None, sim=None):
+    def likelihood(self, obs=None, sim=None, bias=None):
         """Compute the Inverse Variance Likelihood
         
         Compute the Inverse Variance Likelihood: 
 
-        .. math:: L(\\theta|Y) = (\\sigma_e^2)^{-T}
+        .. math::
+            L_{\\ell}(\\theta | Y') = \\left( \\frac{\\sum_{j=1}^m (y_j - y'_j + \\mu_{B,\\ell,j} )^2}{m - 2} \\right)^{-T}
 
         where :math:`L(\\cdot)` is the likelihood function,
         :math:`\\theta` are model parameters, :math:`Y` are observations,
-        :math:`\\sigma_e^2` is the error or residual variance, and
-        :math:`T` is the shape parameter.
+        :math:`\\mu_{B,\\ell}` is the bias up to level :math:`\\ell`,
+        :math:`m` is the number of observations, and :math:`T` is the shape
+        parameter.
 
         Parameters
         ----------
@@ -73,12 +77,15 @@ class InverseErrorVarianceLikelihood():
             The observations of the system.
         sim : 1D array-like of float
             The simulated observation equivalents, simulated by the model.
+        bias : 1D array-like of float
+            The bias on the level to which the current call to the
+            likelihood belongs. Has the same length as obs and sim.
 
         Returns
         -------
         likelihood : float
-            The likelihood computed from observations and simulated
-            observation equivalents.
+            The likelihood computed from observations, simulated
+            observation equivalents, and the bias term.
         """
 
         try:
@@ -103,6 +110,16 @@ class InverseErrorVarianceLikelihood():
         except ValueError:
             raise
 
+        try:
+            # if no bias is given, we assume it is 0
+            if bias is None:
+                bias = np.zeros_like(sim)
+            if len(sim) != len(bias):
+                msg = ("Length mismatch! Bias vector does not match!")
+                return 0.
+        except ValueError:
+            raise
+
         if self.weights is None:
             weights = np.ones(len(obs))
         else:
@@ -120,7 +137,7 @@ class InverseErrorVarianceLikelihood():
             raise
 
         # calculate the likelihood
-        residuals = np.asarray(obs) - np.asarray(sim)
+        residuals = np.asarray(obs) - np.asarray(sim) + np.asarray(bias)
         residuals *= weights
         ssr = np.sum(residuals ** 2)
         likelihood = (ssr / (len(obs) - 2)) ** (-self.T)
@@ -180,17 +197,19 @@ class RelativeVarianceLikelihood():
 
         return
 
-    def likelihood(self, obs=None, sim=None):
+    def likelihood(self, obs=None, sim=None, bias=None):
         """Compute the Relative Variance Likelihood
         
         Compute the Relative Variance Likelihood:
 
-        .. math:: L(\\theta | Y) = 1 - \\frac{\\sigma_e^2}{\\sigma_{obs}^2}
+        .. math:: L(\\theta | Y') = 1 - \\frac{\\sigma_e^2}{\\sigma_{obs}^2}
 
         where :math:`L(\\cdot)` is the likelihood function,
-        :math:`\\theta` are model parameters, :math:`Y` are observations,
+        :math:`\\theta` are model parameters, :math:`Y'` are observations,
         :math:`\\sigma_e^2` is the variance of errors or residuals, and
-        :math:`\\sigma_{obs}^2` is the variance of observed values.
+        :math:`\\sigma_{obs}^2` is the variance of observed values. Note
+        that bias is included when computing residuals as: residuals =
+        sim - obs + bias.
 
         Parameters
         ----------
@@ -198,6 +217,9 @@ class RelativeVarianceLikelihood():
             The observations of the system.
         sim : 1D array-like of float
             The simulated observation equivalents, simulated by the model.
+        bias : 1D array-like of float
+            The bias on the level to which the current call to the
+            likelihood belongs. Has the same length as obs and sim.
 
         Returns
         -------
@@ -232,6 +254,16 @@ class RelativeVarianceLikelihood():
             self.weights = np.ones(len(obs))
 
         try:
+            # if no bias is given, we assume it is 0
+            if bias is None:
+                bias = np.zeros_like(sim)
+            if len(sim) != len(bias):
+                msg = ("Length mismatch! Bias vector does not match!")
+                return 0.
+        except ValueError:
+            raise
+
+        try:
             if len(self.weights) != len(obs):
                 msg = ("Length mismatch! Weights values have length {} but "
                        " observed values have length {}".format(
@@ -243,7 +275,7 @@ class RelativeVarianceLikelihood():
             raise
 
         # calculate the likelihood
-        residuals = np.asarray(obs) - np.asarray(sim)
+        residuals = np.asarray(sim) - np.asarray(obs) + np.asarray(bias)
         residuals *= self.weights
         var_obs = np.asarray(obs).var()
         var_res = residuals.var()
@@ -310,7 +342,7 @@ class GaussianLogLikelihood():
 
         return
 
-    def likelihood(self, obs=None, sim=None):
+    def likelihood(self, obs=None, sim=None, bias=None):
         """Compute the Gaussian log-likelihood
         
         Compute the Gaussian log-likelihood: 
@@ -329,6 +361,8 @@ class GaussianLogLikelihood():
             The observations of the system.
         sim : 1D array-like of float
             The simulated observation equivalents, simulated by the model.
+        bias
+            Not implemented for this likelihood.
 
         Returns
         -------

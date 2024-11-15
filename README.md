@@ -20,34 +20,23 @@ A documentation webpage is available [here](https://mlglue.readthedocs.io/en/lat
 `MLGLUE` requires the computational model to be given in the form of a callable with a specific set of arguments and returns:
 
 ```python
-def my_model(parameters, level, n_levels, obs_x, obs_y, likelihood, run_id)
+def my_model(parameters, level, n_levels, run_id)
         '''
         Parameters
         ----------
         parameters : 1D list-like
-                the model parameters
+                The model parameter vector.
         level : int
-                the 0-based level index
+                The 0-based level index.
         n_levels : int
-                the total number of levels in the hierarchy
-        obs_x : 1D list-like
-                virtual observation ordinates (not actually used in
-                computations)
-        obs_y : 1D list-like
-                the observations with which to compute the
-                likelihood
-        likelihood : MLGLUE.Likelihoods instance
-        	an instance of any likelihood from MLGLUE.Likelihoods
-                with which to compute the likelihood
+                The total number of levels in the hierarchy.
         run_id : int or str
-                an identifier for the model run
+                An identifier for the model run.
 
         Returns
         -------
-        computed_likelihood : float
-                the computed likelihood
         simulated_observation_equivalents : 1D list-like
-                the simulated equivalents of the observations
+                The simulated equivalents of the observations.
         '''
 
         # your model code
@@ -57,13 +46,7 @@ def my_model(parameters, level, n_levels, obs_x, obs_y, likelihood, run_id)
         	parameters
         	)
 
-        # compute likelihood
-        computed_likelihood = likelihood.likelihood(
-        	obs=obs_y,
-        	sim=simulated_observation_equivalents
-        	)
-
-        return computed_likelihood, simulated_observation_equivalents
+        return simulated_observation_equivalents
 ```
 
 See the examples directory for a working implementation.
