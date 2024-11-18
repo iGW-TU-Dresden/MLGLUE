@@ -1174,18 +1174,18 @@ class MLGLUE():
             n_levels=self.n_levels,
             run_id=run_id,
             )
-        likelihood_ = self.likelihood.likelihood(
-            obs=self.obs,
-            sim=results,
-            bias=self.bias[level_, :]
-        )
-
-        # if something went wrong (i.e., the model either returned None or
-        # the initial value of results is still None), return None to
-        # signal that evaluation for this sample was not successful. in
-        # that case, the next sample is considered by the perform_MLGLUE
-        # method.
-        if results is None:
+        
+        # try getting the likelihood; if the likelihood function raises an
+        # error (e.g., when results are None), return None to signal that
+        # the evaluation for this sample was not successful. in that case
+        # the next sample is considered by the perform_MLGLUE method
+        try:
+            likelihood_ = self.likelihood.likelihood(
+                obs=self.obs,
+                sim=results,
+                bias=self.bias[level_, :]
+            )
+        except:
             return None
 
         # if results is not None (i.e., the model returned the expected
@@ -1222,11 +1222,18 @@ class MLGLUE():
                         n_levels=self.n_levels,
                         run_id=run_id,
                         )
-                    likelihood_ = self.likelihood.likelihood(
-                        obs=self.obs,
-                        sim=results,
-                        bias=self.bias[level__, :]
-                    )
+                    # try getting the likelihood; if the likelihood function raises an
+                    # error (e.g., when results are None), return None to signal that
+                    # the evaluation for this sample was not successful. in that case
+                    # the next sample is considered by the perform_MLGLUE method
+                    try:
+                        likelihood_ = self.likelihood.likelihood(
+                            obs=self.obs,
+                            sim=results,
+                            bias=self.bias[level_, :]
+                        )
+                    except:
+                        return None
 
                     # append the model results to the analysis data
                     # structure
@@ -1330,11 +1337,18 @@ class MLGLUE():
             n_levels=self.n_levels,
             run_id=run_id,
             )
-        likelihood_ = self.likelihood.likelihood(
-            obs=self.obs,
-            sim=results,
-            bias=self.bias[level_, :]
-        )
+        # try getting the likelihood; if the likelihood function raises an
+        # error (e.g., when results are None), return None to signal that
+        # the evaluation for this sample was not successful. in that case
+        # the next sample is considered by the perform_MLGLUE method
+        try:
+            likelihood_ = self.likelihood.likelihood(
+                obs=self.obs,
+                sim=results,
+                bias=self.bias[level_, :]
+            )
+        except:
+            likelihood_ = None
 
         # append likelihood value and results to internal data structures
         # the case where the likelihood is None etc. is handeled below
@@ -1349,11 +1363,18 @@ class MLGLUE():
                 n_levels=self.n_levels,
                 run_id=run_id,
                 )
-            likelihood_ = self.likelihood.likelihood(
-                obs=self.obs,
-                sim=results,
-                bias=self.bias[level__, :]
-            )
+            # try getting the likelihood; if the likelihood function raises an
+            # error (e.g., when results are None), return None to signal that
+            # the evaluation for this sample was not successful. in that case
+            # the next sample is considered by the perform_MLGLUE method
+            try:
+                likelihood_ = self.likelihood.likelihood(
+                    obs=self.obs,
+                    sim=results,
+                    bias=self.bias[level_, :]
+                )
+            except:
+                likelihood_ = None
 
             # append likelihood value and results to internal data
             # structures the case where the likelihood is None etc. is
