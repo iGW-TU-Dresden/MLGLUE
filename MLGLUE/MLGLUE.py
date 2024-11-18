@@ -954,6 +954,14 @@ class MLGLUE():
         if filtered_results.shape[1] == 0:
             print("\n\nThere are no samples to compute the bias with.\n\n")
             return
+        
+        print(
+            "Calculating bias on the basis of" +
+            " {} out of {} samples".format(
+                filtered_results.shape[1],
+                self.likelihoods_tuning.shape[1]
+            )
+        )
 
         # calculate pairwise biases (mu_k) between adjacent levels
         mu_k = []
