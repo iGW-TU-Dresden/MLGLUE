@@ -150,6 +150,8 @@ class InverseErrorVarianceLikelihood():
                 return -1e10
             else:
                 return 1e10
+            
+        print(likelihood)
 
         return likelihood
 
