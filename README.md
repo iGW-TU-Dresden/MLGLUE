@@ -5,7 +5,7 @@
 [![Documentation Status](https://readthedocs.org/projects/mlglue/badge/?version=latest)](https://mlglue.readthedocs.io/en/latest/?badge=latest)
 
 # MLGLUE
-This Python package is an implementation of the Multilevel Generalized Likelihood Uncertainty Estimation (MLGLUE) algorithm, including some utility functions. See the MLGLUE paper [here](https://essopenarchive.org/users/677423/articles/853135-extending-glue-with-multilevel-methods-to-accelerate-statistical-inversion-of-hydrological-models) (preprint).
+This Python package is an implementation of the Multilevel Generalized Likelihood Uncertainty Estimation (MLGLUE) algorithm, including some utility functions. See the MLGLUE paper [here](https://doi.org/10.1029/2024WR037735).
 
 ## Installation
 `pip install MLGLUE`
