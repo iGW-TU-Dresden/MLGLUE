@@ -1701,6 +1701,14 @@ class MLGLUE():
                     # taking the bias into account
                     self.recalculate_likelihoods()
 
+                    # hierarchy analysis
+                    self.analyze_variances_likelihoods(
+                        raise_error=self.hierarchy_analysis
+                    )
+                    self.analyze_means_likelihoods(
+                        raise_error=self.hierarchy_analysis
+                    )
+
                     # new threshold analysis
                     self.calculate_thresholds()
             
@@ -1740,6 +1748,14 @@ class MLGLUE():
                     # we now need to re-calculate the likelihoods on all levels
                     # taking the bias into account
                     self.recalculate_likelihoods()
+
+                    # hierarchy analysis
+                    self.analyze_variances_likelihoods(
+                        raise_error=self.hierarchy_analysis
+                    )
+                    self.analyze_means_likelihoods(
+                        raise_error=self.hierarchy_analysis
+                    )
 
                     # new threshold analysis
                     self.calculate_thresholds()
