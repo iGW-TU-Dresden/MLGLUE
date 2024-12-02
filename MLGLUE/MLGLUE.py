@@ -1489,7 +1489,7 @@ class MLGLUE():
 
         return
     
-    def perform_MLGLUE_multiprocessing_tuning(self):
+    def perform_MLGLUE_multiprocessing_tuning(self, **kwargs):
         """MLGLUE tuning using multiprocessing.
 
         Perform the MLGLUE tuning using multiprocessing / Ray. This only
@@ -1498,7 +1498,8 @@ class MLGLUE():
 
         Parameters
         ----------
-        None
+        **kwargs : dict
+            Additional keyword arguments passed to Ray.init.
 
         Returns
         -------
@@ -1506,7 +1507,7 @@ class MLGLUE():
         """
         # shut down ray and initialize again
         ray.shutdown()
-        ray.init(num_cpus=self.n_processors)
+        ray.init(num_cpus=self.n_processors, **kwargs)
 
         # perform tuning with multiprocessing
         print("\nStarting tuning with multiprocessing...")
@@ -1522,7 +1523,7 @@ class MLGLUE():
 
         return
 
-    def perform_MLGLUE_multiprocessing_sampling(self):
+    def perform_MLGLUE_multiprocessing_sampling(self, **kwargs):
         """MLGLUE sampling using multiprocessing.
 
         Perform the MLGLUE sampling using multiprocessing / Ray. This only
@@ -1531,14 +1532,15 @@ class MLGLUE():
 
         Parameters
         ----------
-        None
+        **kwargs : dict
+            Additional keyword arguments passed to Ray.init.
 
         Returns
         -------
         None
         """
         ray.shutdown()
-        ray.init(num_cpus=self.n_processors)
+        ray.init(num_cpus=self.n_processors, **kwargs=)
         print("\nStarting sampling with multiprocessing...")
         with Pool(processes=self.n_processors) as pool:
             for eval_ in pool.starmap(self.evaluate_sample,
@@ -1598,7 +1600,7 @@ class MLGLUE():
 
         return
     
-    def perform_MLGLUE(self):
+    def perform_MLGLUE(self, **kwargs):
         """Perform the full MLGLUE algorithm. 
         
         Perform the full MLGLUE algorithm using single-core or parallelized
@@ -1607,7 +1609,8 @@ class MLGLUE():
 
         Parameters
         ----------
-        None
+        **kwargs : dict
+            Additional keyword arguments passed to Ray.init.
 
         Returns
         -------
