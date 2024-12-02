@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 setup(
     name = "MLGLUE",
     author = "M. G. Rudolph",
-    version = "0.0.10",
+    version = "0.0.13",
     description = "a Python implementation of the (M)ulti(l)evel (G)eneralized (L)ikelihood (U)ncertainty (E)stimation (MLGLUE) algorithm and utility functions",
     url = "https://github.com/iGW-TU-Dresden/MLGLUE",
     author_email = "max_gustav.rudolph@tu-dresden.de",

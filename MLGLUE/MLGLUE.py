@@ -1540,7 +1540,7 @@ class MLGLUE():
         None
         """
         ray.shutdown()
-        ray.init(num_cpus=self.n_processors, **kwargs=)
+        ray.init(num_cpus=self.n_processors, **kwargs)
         print("\nStarting sampling with multiprocessing...")
         with Pool(processes=self.n_processors) as pool:
             for eval_ in pool.starmap(self.evaluate_sample,
@@ -1662,7 +1662,7 @@ class MLGLUE():
         if self.multiprocessing:
             # perform tuning
             if self.thresholds_predefined == False:
-                self.perform_MLGLUE_multiprocessing_tuning()
+                self.perform_MLGLUE_multiprocessing_tuning(**kwargs)
 
                 # this is how it should be with the bias estimation:
                 #   - standard tuning
@@ -1716,7 +1716,7 @@ class MLGLUE():
                     self.calculate_thresholds()
             
             # perform sampling
-            self.perform_MLGLUE_multiprocessing_sampling()
+            self.perform_MLGLUE_multiprocessing_sampling(**kwargs)
         
         else:
             # perform tuning
