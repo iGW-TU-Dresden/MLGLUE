@@ -1556,7 +1556,8 @@ class MLGLUE():
             self.likelihood,
             self.obs,
             self.bias,
-            self.n_levels
+            self.n_levels,
+            self.thresholds
         ) for _ in range(self.n_processors)]
 
         # Distribute tasks among actors
@@ -1852,12 +1853,13 @@ class MLGLUE():
 
 @ray.remote
 class MLGLUEWorker:
-    def __init__(self, model, likelihood, obs, bias, n_levels):
+    def __init__(self, model, likelihood, obs, bias, n_levels, thresholds=None):
         self.model = model
         self.likelihood = likelihood
         self.obs = obs
         self.bias = bias
         self.n_levels = n_levels
+        self.thresholds = thresholds
 
     def evaluate_sample_tuning(self, sample, run_id):
         # The same logic as your original evaluate_sample_tuning method,
