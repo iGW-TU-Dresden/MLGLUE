@@ -6,7 +6,7 @@ from ray.util.multiprocessing import Pool
 
 class MLGLUE():
     """The MLGLUE class.
-    
+
     This is the basic class of the MLGLUE implementation. It is used to
     define all general settings of MLGLUE sampling for a given case
     such as the model function, the likelihood function, parameter
@@ -78,7 +78,13 @@ class MLGLUE():
         levels (l-1, l) is larger than on level (l) and / or if the
         variances or mean values between levels do not decay
         monotonically.
-    
+    include_bias : bool
+        Whether to include the computation of bias vectors or not. If
+        included (True), a likelihood must be used which accepts a
+        bias vector (e.g., InverseErrorVarianceLikelihood_bias). Bias
+        is computed for lower-level models w.r.t. the highest-level
+        model.
+
     Attributes
     ----------
     model : Callable
@@ -153,8 +159,7 @@ class MLGLUE():
         monotonically.
     selected_samples : 2D array-like of float
         The array of selected samples that are accepted on the highest
-        level; has individual samples as rows and variables / model
-        parameters as columns.
+        level; has shape (n_selected_samples, n_model_parameters)
     results : 2D array-like of float
         Holds simulated observation equivalents corresponding to all
         posterior samples; has shape (len(selected_samples), len(obs)).
@@ -166,9 +171,7 @@ class MLGLUE():
         Holds simulated observation equivalents corresponding to all
         tuning samples (except for tuning samples that result in an
         error or NaN returned by the model callable) on all levels;
-        has the tuning samples in the first dimension, the levels in
-        the second dimension, and the simulated values in the third
-        dimension.
+        has shape (n_levels, len(selected_samples_tuning), len(obs))
     likelihoods : 1D array-like of float
         The likelihood values correpsonding to the selected samples.
     normalized_likelihoods : 1D array-like of float
@@ -177,14 +180,23 @@ class MLGLUE():
     likelihoods_tuning : 2D array-like of float
         The likelihood values on all levels for all tuning samples
         (except for tuning samples that result in an error or NaN
-        returned by the model callable) on all levels; has the levels
-        in the rows and tuning samples in columns.
+        returned by the model callable) on all levels; has shape
+        (n_levels, len(selected_samples_tuning))
     highest_level_calls : 1D array-like of int
         A list with the number of ones equal to the number of calls
         made to the model on the highest level. This is implemented
         like that currently as a list can be shared across processes / 
         workers. A single variable (e.g., an int) could not be shared
-        this way. This will be improved in the future.        
+        this way. This will be improved in the future.
+    include_bias : bool
+        Whether to include the computation of bias vectors or not. If
+        included (True), a likelihood must be used which accepts a
+        bias vector (e.g., InverseErrorVarianceLikelihood_bias). Bias
+        is computed for lower-level models w.r.t. the highest-level
+        model.
+    bias : 2D array-like of float
+        Holds the bias vectors for all levels. Has shape (n_levels,
+        len(obs)).
     
     Notes
     -----
@@ -453,7 +465,6 @@ class MLGLUE():
         already ensures this structure.
         If the model function only has one level, it should be the finest /
         target level.
-
         """
         self.model = model
         self.likelihood = likelihood
@@ -1488,52 +1499,59 @@ class MLGLUE():
         self.check_samples()
 
         return
-    
-    def perform_MLGLUE_multiprocessing_tuning(self, **kwargs):
-        """MLGLUE tuning using multiprocessing.
 
-        Perform the MLGLUE tuning using multiprocessing / Ray. This only
-        includes actual computations and not the preparation of samples
-        etc.
+    def perform_MLGLUE_multiprocessing_tuning(self, **kwargs):
+        """MLGLUE tuning using Ray actors.
+        
+        Perform MLGLUE tuning using Ray actors for parallelization.
 
         Parameters
         ----------
-        **kwargs : dict
-            Additional keyword arguments passed to Ray.init.
+        **kwargs
+            Keyword arguments passed to Ray.init
 
         Returns
         -------
         None
         """
-        # shut down ray and initialize again
         ray.shutdown()
         ray.init(num_cpus=self.n_processors, **kwargs)
+        print("\nStarting tuning with Ray...")
 
-        # perform tuning with multiprocessing
-        print("\nStarting tuning with multiprocessing...")
-        with Pool(processes=self.n_processors) as pool:
-            for result in pool.starmap(self.evaluate_sample_tuning,
-                                       self.iterable_tuning):
-                if result is not None:
-                    for num, i in enumerate(zip(result[0], result[1])):
-                        self.likelihoods_tuning[num].append(i[0])
-                        self.results_analysis_tuning[num].append(i[1])
-        ray.shutdown()
-        ray.shutdown()
+        # create actor pool
+        workers = [MLGLUEWorker.remote(
+            self.model,
+            self.likelihood,
+            self.obs,
+            self.bias,
+            self.n_levels
+        ) for _ in range(self.n_processors)]
 
-        return
+        # distribute tasks among actors
+        result_ids = []
+        for idx, (sample, run_id) in enumerate(self.iterable_tuning):
+            worker = workers[idx % len(workers)]
+            result_id = worker.evaluate_sample_tuning.remote(sample, run_id)
+            result_ids.append(result_id)
+
+        # collect results
+        for result in ray.get(result_ids):
+            if result is not None:
+                for num, i in enumerate(zip(result[0], result[1])):
+                    self.likelihoods_tuning[num].append(i[0])
+                    self.results_analysis_tuning[num].append(i[1])
+
+        ray.shutdown()
 
     def perform_MLGLUE_multiprocessing_sampling(self, **kwargs):
-        """MLGLUE sampling using multiprocessing.
-
-        Perform the MLGLUE sampling using multiprocessing / Ray. This only
-        includes actual computations and not the preparation of samples
-        etc.
+        """MLGLUE sampling using Ray actors.
+        
+        Perform MLGLUE sampling using Ray actors for parallelization.
 
         Parameters
         ----------
-        **kwargs : dict
-            Additional keyword arguments passed to Ray.init.
+        **kwargs
+            Keyword arguments passed to Ray.init
 
         Returns
         -------
@@ -1541,24 +1559,39 @@ class MLGLUE():
         """
         ray.shutdown()
         ray.init(num_cpus=self.n_processors, **kwargs)
-        print("\nStarting sampling with multiprocessing...")
-        with Pool(processes=self.n_processors) as pool:
-            for eval_ in pool.starmap(self.evaluate_sample,
-                                      self.iterable_sampling):
-                if eval_ is not None and eval_[1] is not False:
-                    self.selected_samples.append(eval_[0])
-                    self.likelihoods.append(eval_[1])
-                    self.results.append(eval_[2])
-                    for num, i in enumerate(eval_[3]):
-                        self.results_analysis[num].append(i)
-                    if eval_[4] == 1:
-                        self.highest_level_calls.append(eval_[4])
-                elif eval_ is not None and eval_[1] is False:
-                    if eval_[0] == 1:
-                        self.highest_level_calls.append(eval_[0])
-        ray.shutdown()
+        print("\nStarting sampling with Ray...")
 
-        return
+        # create actor pool
+        workers = [MLGLUEWorker.remote(
+            self.model,
+            self.likelihood,
+            self.obs,
+            self.bias,
+            self.n_levels,
+            self.thresholds
+        ) for _ in range(self.n_processors)]
+
+        # distribute tasks among actors
+        result_ids = []
+        for idx, (sample, run_id) in enumerate(self.iterable_sampling):
+            worker = workers[idx % len(workers)]
+            result_id = worker.evaluate_sample.remote(sample, run_id)
+            result_ids.append(result_id)
+
+        # collect results
+        for eval_ in ray.get(result_ids):
+            if eval_ is not None and eval_[1] is not False:
+                self.selected_samples.append(eval_[0])
+                self.likelihoods.append(eval_[1])
+                self.results.append(eval_[2])
+                for num, i in enumerate(eval_[3]):
+                    self.results_analysis[num].append(i)
+                if eval_[4] == 1:
+                    self.highest_level_calls.append(eval_[4])
+            elif eval_ is not None and eval_[1] is False:
+                if eval_[0] == 1:
+                    self.highest_level_calls.append(eval_[0])
+        ray.shutdown()
 
     def perform_MLGLUE_singlecore_tuning(self):
         """MLGLUE tuning using a single CPU.
@@ -1663,17 +1696,6 @@ class MLGLUE():
             # perform tuning
             if self.thresholds_predefined == False:
                 self.perform_MLGLUE_multiprocessing_tuning(**kwargs)
-
-                # this is how it should be with the bias estimation:
-                #   - standard tuning
-                #   - standard hierarchy analysis
-                #   - standard threshold computation
-                #   - bias estimation only with samples for which the
-                #       likelihood is ABOVE the level-dependent threshold
-                #       (those can be different samples on different levels)
-                #   - new hierarchy analysis (not necessary)
-                #   - new threshold analysis
-                #   - sampling
 
                 # make results_analysis_tuning a numpy array
                 self.results_analysis_tuning = np.asarray(
@@ -1854,3 +1876,390 @@ class MLGLUE():
                                          values_))
 
         return np.asarray(uncertainty)
+
+@ray.remote
+class MLGLUEWorker():
+    """The MLGLUEWorker class.
+    
+    This is a utility class used to parallelize MLGLUE. It enables using
+    Ray actors for parallelization (previously MLGLUE used Ray's
+    multiprocessing API).
+
+    Parameters
+    ----------
+    model : Callable
+        The callable representing the model to which MLGLUE should be
+        applied. See the Notes section of the MLGLUE class for further
+        details.
+    likelihood
+        An instance of an MLGLUE likelihood object. See the Notes section
+        of the MLGLUE class for further details.
+    obs : 1D array-like of float
+        The observations for which the model simulates values.
+    bias :  1D array-like of float
+        The bias array with the same length as obs.
+    n_levels : int
+        The number of levels in the hierarchy.
+    thresholds : 1D array-like of float
+        The level-dependent likelihood thresholds to use. Can be None if
+        only tuning is considered, has to have shape (n_levels,) if
+        sampling is considered.
+    
+    Attributes
+    ----------
+    model : Callable
+        The callable representing the model to which MLGLUE should be
+        applied. See the Notes section of the MLGLUE class for further
+        details.
+    likelihood
+        An instance of an MLGLUE likelihood object. See the Notes section
+        of the MLGLUE class for further details.
+    obs : 1D array-like of float
+        The observations for which the model simulates values.
+    bias :  1D array-like of float
+        The bias array with the same length as obs.
+    n_levels : int
+        The number of levels in the hierarchy.
+    thresholds : 1D array-like of float
+        The level-dependent likelihood thresholds to use. Can be None if
+        only tuning is considered, has to have shape (n_levels,) if
+        sampling is considered.
+    """
+    def __init__(
+            self,
+            model,
+            likelihood,
+            obs,
+            bias,
+            n_levels,
+            thresholds=None
+        ):
+        """The MLGLUEWorker class.
+    
+        This is a utility class used to parallelize MLGLUE. It enables using
+        Ray actors for parallelization (previously MLGLUE used Ray's
+        multiprocessing API).
+
+        Parameters
+        ----------
+        model : Callable
+            The callable representing the model to which MLGLUE should be
+            applied. See the Notes section of the MLGLUE class for further
+            details.
+        likelihood
+            An instance of an MLGLUE likelihood object. See the Notes section
+            of the MLGLUE class for further details.
+        obs : 1D array-like of float
+            The observations for which the model simulates values.
+        bias :  1D array-like of float
+            The bias array with the same length as obs.
+        n_levels : int
+            The number of levels in the hierarchy.
+        thresholds : 1D array-like of float
+            The level-dependent likelihood thresholds to use. Can be None if
+            only tuning is considered, has to have shape (n_levels,) if
+            sampling is considered.
+        
+        Attributes
+        ----------
+        model : Callable
+            The callable representing the model to which MLGLUE should be
+            applied. See the Notes section of the MLGLUE class for further
+            details.
+        likelihood
+            An instance of an MLGLUE likelihood object. See the Notes section
+            of the MLGLUE class for further details.
+        obs : 1D array-like of float
+            The observations for which the model simulates values.
+        bias :  1D array-like of float
+            The bias array with the same length as obs.
+        n_levels : int
+            The number of levels in the hierarchy.
+        thresholds : 1D array-like of float
+            The level-dependent likelihood thresholds to use. Can be None if
+            only tuning is considered, has to have shape (n_levels,) if
+            sampling is considered.
+        """
+        self.model = model
+        self.likelihood = likelihood
+        self.obs = obs
+        self.bias = bias
+        self.n_levels = n_levels
+        self.thresholds = thresholds
+
+    def evaluate_sample_tuning(self, sample, run_id):
+        """Multiprocessing MLGLUE tuning utility.
+
+        Evaluate a single parameter sample for tuning with the MLGLUE
+        hierarchy. This design allows for multiprocessing (using Ray).
+        Although similar to the evaluate_sample method, this method is
+        slightly different: independently of the actual likelihood value,
+        the sample is passed through all levels in the model hierarchy.
+        
+        Parameters
+        ----------
+        sample : 1D list-like of float
+            The parameter sample which is evaluated. Each element has to
+            represent an individual model parameter. Note that the order of
+            the elements has to correspond to the order of model parameters
+            in the model callable.
+        run_id : int or str
+            A run identifier in the form of an integer or string (the value
+            of run_id is converted to a str later in any case). The value
+            of run_id is also passed to the model callable, which is
+            especially relevant if each model run is associated with a
+            corresponding individual working directory. Then this directory
+            can be named including the run_id value. This resolves problems
+            for multiprocessing when multiple such individual directories
+            are present in the same parent directory.
+        
+        Returns
+        -------
+        likelihoods_sample : 1D list-like of float
+            The likelihood values on all levels corresponding to the
+            parameter sample (except for tuning samples that result in an
+            error or NaN returned by the model callable). The order is from
+            the lowest to the highest level.
+        results_analysis_tuning_sample : 2D list-like of float
+            Holds simulated observation equivalents (ans possibly other
+            quantities returned by the model) corresponding to the tuning
+            sample (except for tuning samples that result in an error or
+            NaN returned by the model callable) on all levels;
+            has the tuning samples in the first dimension, the levels in
+            the second dimension, and the simulated values in the third
+            dimension.
+        """
+
+        # initialize internal data structures
+        likelihoods_sample = []
+        results_analysis_tuning_sample = []
+
+        # set the internal level index to 0 (i.e., start sample evaluation
+        # on level 0)
+        level_ = 0
+
+        # evaluate the model on level 0 using the given parameter sample
+        # and using the model callable from the corresponding instance
+        # attribute
+        results = self.model(
+            parameters=sample,
+            level=level_,
+            n_levels=self.n_levels,
+            run_id=run_id,
+        )
+
+        # try getting the likelihood; if the likelihood function raises an
+        # error (e.g., when results are None), return None to signal that
+        # the evaluation for this sample was not successful. in that case
+        # the next sample is considered by the perform_MLGLUE method
+        try:
+            likelihood_ = self.likelihood.likelihood(
+                obs=self.obs,
+                sim=results,
+                bias=self.bias[level_, :]
+            )
+        except:
+            likelihood_ = None
+
+        # append likelihood value and results to internal data structures
+        # the case where the likelihood is None etc. is handeled below
+        likelihoods_sample.append(likelihood_)
+        results_analysis_tuning_sample.append(results)
+
+        # start passing the sample through the model hierarchy
+        for level__ in range(1, self.n_levels):
+            results = self.model(
+                parameters=sample,
+                level=level__,
+                n_levels=self.n_levels,
+                run_id=run_id,
+            )
+            # try getting the likelihood; if the likelihood function raises an
+            # error (e.g., when results are None), return None to signal that
+            # the evaluation for this sample was not successful. in that case
+            # the next sample is considered by the perform_MLGLUE method
+            try:
+                likelihood_ = self.likelihood.likelihood(
+                    obs=self.obs,
+                    sim=results,
+                    bias=self.bias[level_, :]
+                )
+            except:
+                likelihood_ = None
+
+            # append likelihood value and results to internal data
+            # structures the case where the likelihood is None etc. is
+            # handeled below
+            likelihoods_sample.append(likelihood_)
+            results_analysis_tuning_sample.append(results)
+
+        # handle the case where any likelihood is None in the model
+        # hierarchy for the current sample. return noe to completely
+        # discard all results renated to that sample
+        # similarly check for NaN values and discard all results if found
+        if None in likelihoods_sample or np.isnan(likelihoods_sample).any():
+            return None
+        else:
+            return likelihoods_sample, results_analysis_tuning_sample
+
+    def evaluate_sample(self, sample, run_id):
+        """Multiprocessing MLGLUE sampling utility.
+
+        Evaluate a single parameter sample with the MLGLUE hierarchy. This
+        design allows for multiprocessing (using Ray).
+        
+        Parameters
+        ----------
+        sample : 1D list-like of float
+            The parameter sample which is evaluated. Each element has to
+            represent an individual model parameter. Note that the order of
+            the elements has to correspond to the order of model parameters
+            in the model callable.
+        run_id : int or str
+            A run identifier in the form of an integer or string (the value
+            of run_id is converted to a str later in any case). The value
+            of run_id is also passed to the model callable, which is
+            especially relevant if each model run is associated with a
+            corresponding individual working directory. Then this directory
+            can be named including the run_id value. This resolves problems
+            for multiprocessing when multiple such individual directories
+            are present in the same parent directory.
+        
+        Returns
+        -------
+        sample : 1D list-like of float
+            The parameter sample which was evaluated.
+        likelihood_ : float
+            The likelihood value on the highest level corresponding to the
+            parameter sample which was evaluated.
+        results : 1D list-like of float
+            The simulation results (at least all simulated observation
+            equivalents) on the highest level corresponding to the sample
+            which was evaluated.
+        results_analysis_sample : 2D list-like of float
+            The simulation results (at least all simulated observation
+            equivalents) on all levels corresponding to the sample which
+            was evaluated. Has the levels in rows and the individual
+            results in columns.
+        highest_level_call : int
+            An identifier if the highest level model has been called (1) or
+            not (0) using the evaluated parameter sample. It may happen
+            that a parameter sample reaches the highest level model but is
+            not accepted after running the model with that sample. Such
+            cases should be minimized for MLGLUE to have optimal
+            efficiency.
+
+        Notes
+        -----
+        All returns are returned together as a tuple.
+        """
+
+        # set the call of the model on the highest level for the sample to
+        # False (0)
+        highest_level_call = 0
+        # set the internal level index to 0 (i.e., start sample evaluation
+        # on level 0)
+        level_ = 0
+        # initialize internal data structures
+        results_analysis_sample = []
+
+        # evaluate the model on level 0 using the given parameter sample
+        # and using the model callable from the corresponding instance
+        # attribute
+        results = self.model(
+            parameters=sample,
+            level=level_,
+            n_levels=self.n_levels,
+            run_id=run_id,
+        )
+
+        # try getting the likelihood; if the likelihood function raises an
+        # error (e.g., when results are None), return None to signal that
+        # the evaluation for this sample was not successful. in that case
+        # the next sample is considered by the perform_MLGLUE method
+        try:
+            likelihood_ = self.likelihood.likelihood(
+                obs=self.obs,
+                sim=results,
+                bias=self.bias[level_, :]
+            )
+        except:
+            return None
+
+        # append the results from the lowest level call to a list which
+        # can be accessed by the user for further analysis
+        # we can assume here that if no exception was raised when computing
+        # the likelihood we can continue
+        results_analysis_sample.append(results)
+
+        # initialize a variable to handle level indices
+        level_checker = 0
+
+        # if results is not None (i.e., the model returned the expected
+        # results), start passing the sample through the model hierarchy
+        for level__ in range(1, self.n_levels):
+            # check if the likelihood from the next coarser level is
+            # above the corresponding level-dependent threshold
+            level_checker = level__
+            # if the likelihood is not None and is above the level-
+            # dependent threshold, continue with the sample evaluation
+            if likelihood_ is not None and likelihood_ >= self.thresholds[level__ - 1]:
+                # if this already was a call to the model on the
+                # highest level, set the variable to 1 (True)
+                if level__ == self.n_levels - 1:
+                    highest_level_call = 1
+                # if the likelihood was above a threshold in the lower
+                # level, go up one level and compute the likelihood
+                # again
+                results = self.model(
+                    parameters=sample,
+                    level=level__,
+                    n_levels=self.n_levels,
+                    run_id=run_id,
+                )
+                # try getting the likelihood; if the likelihood function raises an
+                # error (e.g., when results are None), return None to signal that
+                # the evaluation for this sample was not successful. in that case
+                # the next sample is considered by the perform_MLGLUE method
+                try:
+                    likelihood_ = self.likelihood.likelihood(
+                        obs=self.obs,
+                        sim=results,
+                        bias=self.bias[level_, :]
+                    )
+                except:
+                    return None
+                
+                # append the model results to the analysis data structure
+                results_analysis_sample.append(results)
+
+            # if the likelihood in the current level is below a
+            # threshold, do not use the sample, break the level
+            # iteration, and go to the next sample
+            else:
+                # if a sample is not accepted on the highest level, the
+                # level_checker still is equal to the highest level
+                # index. in that case, it might happen below that
+                # unwillingly a sample results in a likelihood (from a
+                # lower level) above the threshold and the
+                # level_checker corresponding to the highest level. to
+                # circumvent this problem, the level_checker needs to
+                # be reduced by one
+                level_checker -= 1
+                break
+        
+        # if the likelihood is above the highest level threshold and
+        # we are currently on the highest level, return all results
+        if likelihood_ is not None and likelihood_ >= self.thresholds[-1] and level_checker == self.n_levels - 1:
+            return (
+                sample,
+                likelihood_,
+                results,
+                results_analysis_sample,
+                highest_level_call
+            )
+        # if the above conditions do not hold, return the highest-level
+        # call variable and False to indicate that the next sample has
+        # to be considered
+        else:
+            return (highest_level_call, False)
