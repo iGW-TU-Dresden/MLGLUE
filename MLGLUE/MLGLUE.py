@@ -965,6 +965,14 @@ class MLGLUE():
         if filtered_results.shape[1] == 0:
             print("\n\nThere are no samples to compute the bias with.\n\n")
             return
+        
+        print(
+            "Calculating bias on the basis of" +
+            " {} out of {} samples".format(
+                filtered_results.shape[1],
+                self.likelihoods_tuning.shape[1]
+            )
+        )
 
         # calculate pairwise biases (mu_k) between adjacent levels
         mu_k = []
@@ -1185,18 +1193,18 @@ class MLGLUE():
             n_levels=self.n_levels,
             run_id=run_id,
             )
-        likelihood_ = self.likelihood.likelihood(
-            obs=self.obs,
-            sim=results,
-            bias=self.bias[level_, :]
-        )
-
-        # if something went wrong (i.e., the model either returned None or
-        # the initial value of results is still None), return None to
-        # signal that evaluation for this sample was not successful. in
-        # that case, the next sample is considered by the perform_MLGLUE
-        # method.
-        if results is None:
+        
+        # try getting the likelihood; if the likelihood function raises an
+        # error (e.g., when results are None), return None to signal that
+        # the evaluation for this sample was not successful. in that case
+        # the next sample is considered by the perform_MLGLUE method
+        try:
+            likelihood_ = self.likelihood.likelihood(
+                obs=self.obs,
+                sim=results,
+                bias=self.bias[level_, :]
+            )
+        except:
             return None
 
         # if results is not None (i.e., the model returned the expected
@@ -1233,11 +1241,18 @@ class MLGLUE():
                         n_levels=self.n_levels,
                         run_id=run_id,
                         )
-                    likelihood_ = self.likelihood.likelihood(
-                        obs=self.obs,
-                        sim=results,
-                        bias=self.bias[level__, :]
-                    )
+                    # try getting the likelihood; if the likelihood function raises an
+                    # error (e.g., when results are None), return None to signal that
+                    # the evaluation for this sample was not successful. in that case
+                    # the next sample is considered by the perform_MLGLUE method
+                    try:
+                        likelihood_ = self.likelihood.likelihood(
+                            obs=self.obs,
+                            sim=results,
+                            bias=self.bias[level_, :]
+                        )
+                    except:
+                        return None
 
                     # append the model results to the analysis data
                     # structure
@@ -1341,11 +1356,18 @@ class MLGLUE():
             n_levels=self.n_levels,
             run_id=run_id,
             )
-        likelihood_ = self.likelihood.likelihood(
-            obs=self.obs,
-            sim=results,
-            bias=self.bias[level_, :]
-        )
+        # try getting the likelihood; if the likelihood function raises an
+        # error (e.g., when results are None), return None to signal that
+        # the evaluation for this sample was not successful. in that case
+        # the next sample is considered by the perform_MLGLUE method
+        try:
+            likelihood_ = self.likelihood.likelihood(
+                obs=self.obs,
+                sim=results,
+                bias=self.bias[level_, :]
+            )
+        except:
+            likelihood_ = None
 
         # append likelihood value and results to internal data structures
         # the case where the likelihood is None etc. is handeled below
@@ -1360,11 +1382,18 @@ class MLGLUE():
                 n_levels=self.n_levels,
                 run_id=run_id,
                 )
-            likelihood_ = self.likelihood.likelihood(
-                obs=self.obs,
-                sim=results,
-                bias=self.bias[level__, :]
-            )
+            # try getting the likelihood; if the likelihood function raises an
+            # error (e.g., when results are None), return None to signal that
+            # the evaluation for this sample was not successful. in that case
+            # the next sample is considered by the perform_MLGLUE method
+            try:
+                likelihood_ = self.likelihood.likelihood(
+                    obs=self.obs,
+                    sim=results,
+                    bias=self.bias[level_, :]
+                )
+            except:
+                likelihood_ = None
 
             # append likelihood value and results to internal data
             # structures the case where the likelihood is None etc. is
@@ -1562,7 +1591,6 @@ class MLGLUE():
             elif eval_ is not None and eval_[1] is False:
                 if eval_[0] == 1:
                     self.highest_level_calls.append(eval_[0])
-
         ray.shutdown()
 
     def perform_MLGLUE_singlecore_tuning(self):
@@ -1698,6 +1726,14 @@ class MLGLUE():
                     # taking the bias into account
                     self.recalculate_likelihoods()
 
+                    # hierarchy analysis
+                    self.analyze_variances_likelihoods(
+                        raise_error=self.hierarchy_analysis
+                    )
+                    self.analyze_means_likelihoods(
+                        raise_error=self.hierarchy_analysis
+                    )
+
                     # new threshold analysis
                     self.calculate_thresholds()
             
@@ -1737,6 +1773,14 @@ class MLGLUE():
                     # we now need to re-calculate the likelihoods on all levels
                     # taking the bias into account
                     self.recalculate_likelihoods()
+
+                    # hierarchy analysis
+                    self.analyze_variances_likelihoods(
+                        raise_error=self.hierarchy_analysis
+                    )
+                    self.analyze_means_likelihoods(
+                        raise_error=self.hierarchy_analysis
+                    )
 
                     # new threshold analysis
                     self.calculate_thresholds()
