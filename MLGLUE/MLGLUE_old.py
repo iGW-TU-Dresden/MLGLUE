@@ -954,6 +954,14 @@ class MLGLUE():
         if filtered_results.shape[1] == 0:
             print("\n\nThere are no samples to compute the bias with.\n\n")
             return
+        
+        print(
+            "Calculating bias on the basis of" +
+            " {} out of {} samples".format(
+                filtered_results.shape[1],
+                self.likelihoods_tuning.shape[1]
+            )
+        )
 
         # calculate pairwise biases (mu_k) between adjacent levels
         mu_k = []
@@ -1174,18 +1182,18 @@ class MLGLUE():
             n_levels=self.n_levels,
             run_id=run_id,
             )
-        likelihood_ = self.likelihood.likelihood(
-            obs=self.obs,
-            sim=results,
-            bias=self.bias[level_, :]
-        )
-
-        # if something went wrong (i.e., the model either returned None or
-        # the initial value of results is still None), return None to
-        # signal that evaluation for this sample was not successful. in
-        # that case, the next sample is considered by the perform_MLGLUE
-        # method.
-        if results is None:
+        
+        # try getting the likelihood; if the likelihood function raises an
+        # error (e.g., when results are None), return None to signal that
+        # the evaluation for this sample was not successful. in that case
+        # the next sample is considered by the perform_MLGLUE method
+        try:
+            likelihood_ = self.likelihood.likelihood(
+                obs=self.obs,
+                sim=results,
+                bias=self.bias[level_, :]
+            )
+        except:
             return None
 
         # if results is not None (i.e., the model returned the expected
@@ -1222,11 +1230,18 @@ class MLGLUE():
                         n_levels=self.n_levels,
                         run_id=run_id,
                         )
-                    likelihood_ = self.likelihood.likelihood(
-                        obs=self.obs,
-                        sim=results,
-                        bias=self.bias[level__, :]
-                    )
+                    # try getting the likelihood; if the likelihood function raises an
+                    # error (e.g., when results are None), return None to signal that
+                    # the evaluation for this sample was not successful. in that case
+                    # the next sample is considered by the perform_MLGLUE method
+                    try:
+                        likelihood_ = self.likelihood.likelihood(
+                            obs=self.obs,
+                            sim=results,
+                            bias=self.bias[level_, :]
+                        )
+                    except:
+                        return None
 
                     # append the model results to the analysis data
                     # structure
@@ -1330,11 +1345,18 @@ class MLGLUE():
             n_levels=self.n_levels,
             run_id=run_id,
             )
-        likelihood_ = self.likelihood.likelihood(
-            obs=self.obs,
-            sim=results,
-            bias=self.bias[level_, :]
-        )
+        # try getting the likelihood; if the likelihood function raises an
+        # error (e.g., when results are None), return None to signal that
+        # the evaluation for this sample was not successful. in that case
+        # the next sample is considered by the perform_MLGLUE method
+        try:
+            likelihood_ = self.likelihood.likelihood(
+                obs=self.obs,
+                sim=results,
+                bias=self.bias[level_, :]
+            )
+        except:
+            likelihood_ = None
 
         # append likelihood value and results to internal data structures
         # the case where the likelihood is None etc. is handeled below
@@ -1349,11 +1371,18 @@ class MLGLUE():
                 n_levels=self.n_levels,
                 run_id=run_id,
                 )
-            likelihood_ = self.likelihood.likelihood(
-                obs=self.obs,
-                sim=results,
-                bias=self.bias[level__, :]
-            )
+            # try getting the likelihood; if the likelihood function raises an
+            # error (e.g., when results are None), return None to signal that
+            # the evaluation for this sample was not successful. in that case
+            # the next sample is considered by the perform_MLGLUE method
+            try:
+                likelihood_ = self.likelihood.likelihood(
+                    obs=self.obs,
+                    sim=results,
+                    bias=self.bias[level_, :]
+                )
+            except:
+                likelihood_ = None
 
             # append likelihood value and results to internal data
             # structures the case where the likelihood is None etc. is
@@ -1460,7 +1489,12 @@ class MLGLUE():
 
         return
     
-    def perform_MLGLUE_multiprocessing_tuning(self):
+    def perform_MLGLUE_multiprocessing_tuning(
+        self,
+        maxtasksperchild=1,
+        chunksize=1,
+        **kwargs
+    ):
         """MLGLUE tuning using multiprocessing.
 
         Perform the MLGLUE tuning using multiprocessing / Ray. This only
@@ -1469,7 +1503,17 @@ class MLGLUE():
 
         Parameters
         ----------
-        None
+        maxtasksperchild : int
+            The number of tasks a worker process can complete before it
+            will exit and be replaced with a fresh worker process, to
+            enable unused resources to be freed; default is 1
+        chunksize : int
+            Starmap chops the iterable of model parameters into a number of
+            chunks which it submits to the process pool as separate tasks;
+            the (approximate) size of these chunks can be specified by
+            setting chunksize to a positive integer; default is 1
+        **kwargs : dict
+            Additional keyword arguments passed to Ray.init.
 
         Returns
         -------
@@ -1477,40 +1521,32 @@ class MLGLUE():
         """
         # shut down ray and initialize again
         ray.shutdown()
-        ray.init(num_cpus=self.n_processors)
-
-    def perform_MLGLUE_multiprocessing_tuning(self, **kwargs):
-        """MLGLUE tuning using Ray actors."""
-        ray.shutdown()
         ray.init(num_cpus=self.n_processors, **kwargs)
-        print("\nStarting tuning with Ray...")
 
-        # Create actor pool
-        workers = [MLGLUEWorker.remote(
-            self.model,
-            self.likelihood,
-            self.obs,
-            self.bias,
-            self.n_levels
-        ) for _ in range(self.n_processors)]
-
-        # Distribute tasks among actors
-        result_ids = []
-        for idx, (sample, run_id) in enumerate(self.iterable_tuning):
-            worker = workers[idx % len(workers)]
-            result_id = worker.evaluate_sample_tuning.remote(sample, run_id)
-            result_ids.append(result_id)
-
-        # Collect results
-        for result in ray.get(result_ids):
-            if result is not None:
-                for num, i in enumerate(zip(result[0], result[1])):
-                    self.likelihoods_tuning[num].append(i[0])
-                    self.results_analysis_tuning[num].append(i[1])
-
+        # perform tuning with multiprocessing
+        print("\nStarting tuning with multiprocessing...")
+        with Pool(
+            processes=self.n_processors,
+            maxtasksperchild=maxtasksperchild
+        ) as pool:
+            for result in pool.starmap(self.evaluate_sample_tuning,
+                                       self.iterable_tuning,
+                                       chunksize=chunksize):
+                if result is not None:
+                    for num, i in enumerate(zip(result[0], result[1])):
+                        self.likelihoods_tuning[num].append(i[0])
+                        self.results_analysis_tuning[num].append(i[1])
+        ray.shutdown()
         ray.shutdown()
 
-    def perform_MLGLUE_multiprocessing_sampling(self):
+        return
+
+    def perform_MLGLUE_multiprocessing_sampling(
+        self,
+        maxtasksperchild=1,
+        chunksize=1,
+        **kwargs
+    ):
         """MLGLUE sampling using multiprocessing.
 
         Perform the MLGLUE sampling using multiprocessing / Ray. This only
@@ -1519,18 +1555,32 @@ class MLGLUE():
 
         Parameters
         ----------
-        None
+        maxtasksperchild : int
+            The number of tasks a worker process can complete before it
+            will exit and be replaced with a fresh worker process, to
+            enable unused resources to be freed; default is 1
+        chunksize : int
+            Starmap chops the iterable of model parameters into a number of
+            chunks which it submits to the process pool as separate tasks;
+            the (approximate) size of these chunks can be specified by
+            setting chunksize to a positive integer; default is 1
+        **kwargs : dict
+            Additional keyword arguments passed to Ray.init.
 
         Returns
         -------
         None
         """
         ray.shutdown()
-        ray.init(num_cpus=self.n_processors)
+        ray.init(num_cpus=self.n_processors, **kwargs)
         print("\nStarting sampling with multiprocessing...")
-        with Pool(processes=self.n_processors) as pool:
+        with Pool(
+            processes=self.n_processors,
+            maxtasksperchild=maxtasksperchild
+        ) as pool:
             for eval_ in pool.starmap(self.evaluate_sample,
-                                      self.iterable_sampling):
+                                      self.iterable_sampling,
+                                      chunksize=chunksize):
                 if eval_ is not None and eval_[1] is not False:
                     self.selected_samples.append(eval_[0])
                     self.likelihoods.append(eval_[1])
@@ -1544,43 +1594,7 @@ class MLGLUE():
                         self.highest_level_calls.append(eval_[0])
         ray.shutdown()
 
-    def perform_MLGLUE_multiprocessing_sampling(self, **kwargs):
-        """MLGLUE sampling using Ray actors."""
-        ray.shutdown()
-        ray.init(num_cpus=self.n_processors, **kwargs)
-        print("\nStarting sampling with Ray...")
-
-        # Create actor pool
-        workers = [MLGLUEWorker.remote(
-            self.model,
-            self.likelihood,
-            self.obs,
-            self.bias,
-            self.n_levels
-        ) for _ in range(self.n_processors)]
-
-        # Distribute tasks among actors
-        result_ids = []
-        for idx, (sample, run_id) in enumerate(self.iterable_sampling):
-            worker = workers[idx % len(workers)]
-            result_id = worker.evaluate_sample.remote(sample, run_id)
-            result_ids.append(result_id)
-
-        # Collect results
-        for eval_ in ray.get(result_ids):
-            if eval_ is not None and eval_[1] is not False:
-                self.selected_samples.append(eval_[0])
-                self.likelihoods.append(eval_[1])
-                self.results.append(eval_[2])
-                for num, i in enumerate(eval_[3]):
-                    self.results_analysis[num].append(i)
-                if eval_[4] == 1:
-                    self.highest_level_calls.append(eval_[4])
-            elif eval_ is not None and eval_[1] is False:
-                if eval_[0] == 1:
-                    self.highest_level_calls.append(eval_[0])
-
-        ray.shutdown()
+        return
 
     def perform_MLGLUE_singlecore_tuning(self):
         """MLGLUE tuning using a single CPU.
@@ -1622,7 +1636,7 @@ class MLGLUE():
 
         return
     
-    def perform_MLGLUE(self, **kwargs):
+    def perform_MLGLUE(self, maxtasksperchild=1, chunksize=1, **kwargs):
         """Perform the full MLGLUE algorithm. 
         
         Perform the full MLGLUE algorithm using single-core or parallelized
@@ -1631,6 +1645,15 @@ class MLGLUE():
 
         Parameters
         ----------
+        maxtasksperchild : int
+            The number of tasks a worker process can complete before it
+            will exit and be replaced with a fresh worker process, to
+            enable unused resources to be freed; default is 1
+        chunksize : int
+            Starmap chops the iterable of model parameters into a number of
+            chunks which it submits to the process pool as separate tasks;
+            the (approximate) size of these chunks can be specified by
+            setting chunksize to a positive integer; default is 1
         **kwargs : dict
             Additional keyword arguments passed to Ray.init.
 
@@ -1684,7 +1707,11 @@ class MLGLUE():
         if self.multiprocessing:
             # perform tuning
             if self.thresholds_predefined == False:
-                self.perform_MLGLUE_multiprocessing_tuning(**kwargs)
+                self.perform_MLGLUE_multiprocessing_tuning(
+                    maxtasksperchild,
+                    chunksize,
+                    **kwargs
+                )
 
                 # make results_analysis_tuning a numpy array
                 self.results_analysis_tuning = np.asarray(
@@ -1715,11 +1742,23 @@ class MLGLUE():
                     # taking the bias into account
                     self.recalculate_likelihoods()
 
+                    # hierarchy analysis
+                    self.analyze_variances_likelihoods(
+                        raise_error=self.hierarchy_analysis
+                    )
+                    self.analyze_means_likelihoods(
+                        raise_error=self.hierarchy_analysis
+                    )
+
                     # new threshold analysis
                     self.calculate_thresholds()
             
             # perform sampling
-            self.perform_MLGLUE_multiprocessing_sampling(**kwargs)
+            self.perform_MLGLUE_multiprocessing_sampling(
+                maxtasksperchild,
+                chunksize,
+                **kwargs
+            )
         
         else:
             # perform tuning
@@ -1754,6 +1793,14 @@ class MLGLUE():
                     # we now need to re-calculate the likelihoods on all levels
                     # taking the bias into account
                     self.recalculate_likelihoods()
+
+                    # hierarchy analysis
+                    self.analyze_variances_likelihoods(
+                        raise_error=self.hierarchy_analysis
+                    )
+                    self.analyze_means_likelihoods(
+                        raise_error=self.hierarchy_analysis
+                    )
 
                     # new threshold analysis
                     self.calculate_thresholds()
@@ -1849,121 +1896,3 @@ class MLGLUE():
                                          values_))
 
         return np.asarray(uncertainty)
-
-@ray.remote
-class MLGLUEWorker:
-    def __init__(self, model, likelihood, obs, bias, n_levels):
-        self.model = model
-        self.likelihood = likelihood
-        self.obs = obs
-        self.bias = bias
-        self.n_levels = n_levels
-
-    def evaluate_sample_tuning(self, sample, run_id):
-        # The same logic as your original evaluate_sample_tuning method,
-        # but using self attributes instead of self.
-        likelihoods_sample = []
-        results_analysis_tuning_sample = []
-
-        level_ = 0
-        results = self.model(
-            parameters=sample,
-            level=level_,
-            n_levels=self.n_levels,
-            run_id=run_id,
-        )
-        try:
-            likelihood_ = self.likelihood.likelihood(
-                obs=self.obs,
-                sim=results,
-                bias=self.bias[level_, :]
-            )
-        except:
-            likelihood_ = None
-
-        likelihoods_sample.append(likelihood_)
-        results_analysis_tuning_sample.append(results)
-
-        for level__ in range(1, self.n_levels):
-            results = self.model(
-                parameters=sample,
-                level=level__,
-                n_levels=self.n_levels,
-                run_id=run_id,
-            )
-            try:
-                likelihood_ = self.likelihood.likelihood(
-                    obs=self.obs,
-                    sim=results,
-                    bias=self.bias[level_, :]
-                )
-            except:
-                likelihood_ = None
-
-            likelihoods_sample.append(likelihood_)
-            results_analysis_tuning_sample.append(results)
-
-        if None in likelihoods_sample or np.isnan(likelihoods_sample).any():
-            return None
-        else:
-            return likelihoods_sample, results_analysis_tuning_sample
-
-    def evaluate_sample(self, sample, run_id):
-        # The same logic as your original evaluate_sample method,
-        # but using self attributes instead of self.
-        highest_level_call = 0
-        level_ = 0
-        results_analysis_sample = []
-
-        results = self.model(
-            parameters=sample,
-            level=level_,
-            n_levels=self.n_levels,
-            run_id=run_id,
-        )
-        try:
-            likelihood_ = self.likelihood.likelihood(
-                obs=self.obs,
-                sim=results,
-                bias=self.bias[level_, :]
-            )
-        except:
-            return None
-
-        results_analysis_sample.append(results)
-        level_checker = 0
-
-        for level__ in range(1, self.n_levels):
-            level_checker = level__
-            if likelihood_ is not None and likelihood_ >= self.thresholds[level__ - 1]:
-                if level__ == self.n_levels - 1:
-                    highest_level_call = 1
-                results = self.model(
-                    parameters=sample,
-                    level=level__,
-                    n_levels=self.n_levels,
-                    run_id=run_id,
-                )
-                try:
-                    likelihood_ = self.likelihood.likelihood(
-                        obs=self.obs,
-                        sim=results,
-                        bias=self.bias[level_, :]
-                    )
-                except:
-                    return None
-                results_analysis_sample.append(results)
-            else:
-                level_checker -= 1
-                break
-
-        if likelihood_ is not None and likelihood_ >= self.thresholds[-1] and level_checker == self.n_levels - 1:
-            return (
-                sample,
-                likelihood_,
-                results,
-                results_analysis_sample,
-                highest_level_call
-            )
-        else:
-            return (highest_level_call, False)
