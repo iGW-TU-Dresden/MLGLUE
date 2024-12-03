@@ -1540,7 +1540,6 @@ class MLGLUE():
                 for num, i in enumerate(zip(result[0], result[1])):
                     self.likelihoods_tuning[num].append(i[0])
                     self.results_analysis_tuning[num].append(i[1])
-
         ray.shutdown()
 
     def perform_MLGLUE_multiprocessing_sampling(self, **kwargs):
