@@ -3,7 +3,7 @@ furo
 sphinxcontrib-napoleon
 numpy==1.23.5
 matplotlib==3.6.3
-ray==2.2.0
+ray
 sphinx-design-elements
 sphinx_design
 nbsphinx

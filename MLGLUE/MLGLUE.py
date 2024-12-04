@@ -487,14 +487,20 @@ class MLGLUE():
 
         # initialize output data structures
         self.normalized_likelihoods = None
-        self.results = [] # --> this holds only the final results (i.e., from the finest level)
+        # this holds only the final results (i.e., from the finest level)
+        self.results = []
         self.selected_samples = []
         self.likelihoods = []
         self.likelihoods_tuning = [[] for i in range(self.n_levels)]
-        self.results_analysis = [[] for i in range(self.n_levels)] # --> holds results from all levels during sampling
-        self.results_analysis_tuning = [[] for i in range(self.n_levels)] # --> holds results from all levels during tuning
-        self.highest_level_calls = [] # --> holds identifiers for highest level calls (1 corresponds to a highest level call)
-        self.bias = np.zeros((self.n_levels, len(self.obs))) # --> holds bias vectors
+        # holds results from all levels during sampling
+        self.results_analysis = [[] for i in range(self.n_levels)]
+        # holds results from all levels during tuning
+        self.results_analysis_tuning = [[] for i in range(self.n_levels)]
+        # holds identifiers for highest level calls (1 corresponds to a
+        # highest level call)
+        self.highest_level_calls = []
+        # holds bias vectors
+        self.bias = np.zeros((self.n_levels, len(self.obs)))
 
         if thresholds is not None:
             self.thresholds = thresholds
@@ -1241,10 +1247,11 @@ class MLGLUE():
                         n_levels=self.n_levels,
                         run_id=run_id,
                         )
-                    # try getting the likelihood; if the likelihood function raises an
-                    # error (e.g., when results are None), return None to signal that
-                    # the evaluation for this sample was not successful. in that case
-                    # the next sample is considered by the perform_MLGLUE method
+                    # try getting the likelihood; if the likelihood
+                    # function raises an error (e.g., when results are
+                    # None), return None to signal that the evaluation for
+                    # this sample was not successful. in that case the next
+                    # sample is considered by the perform_MLGLUE method
                     try:
                         likelihood_ = self.likelihood.likelihood(
                             obs=self.obs,
@@ -1382,10 +1389,11 @@ class MLGLUE():
                 n_levels=self.n_levels,
                 run_id=run_id,
                 )
-            # try getting the likelihood; if the likelihood function raises an
-            # error (e.g., when results are None), return None to signal that
-            # the evaluation for this sample was not successful. in that case
-            # the next sample is considered by the perform_MLGLUE method
+            # try getting the likelihood; if the likelihood function raises
+            # an error (e.g., when results are None), return None to signal
+            # that the evaluation for this sample was not successful. in
+            # that case the next sample is considered by the perform_MLGLUE
+            # method
             try:
                 likelihood_ = self.likelihood.likelihood(
                     obs=self.obs,
@@ -1519,7 +1527,7 @@ class MLGLUE():
         print("\nStarting tuning with Ray...")
 
         # create actor pool
-        workers = [MLGLUEWorker.remote(
+        workers = [MLGLUERemoteWorker.remote(
             self.model,
             self.likelihood,
             self.obs,
@@ -1561,7 +1569,7 @@ class MLGLUE():
         print("\nStarting sampling with Ray...")
 
         # create actor pool
-        workers = [MLGLUEWorker.remote(
+        workers = [MLGLUERemoteWorker.remote(
             self.model,
             self.likelihood,
             self.obs,
@@ -1721,8 +1729,8 @@ class MLGLUE():
                     # if bias is included, compute the initial estimate
                     self.calculate_initial_bias_estimate()
                     
-                    # we now need to re-calculate the likelihoods on all levels
-                    # taking the bias into account
+                    # we now need to re-calculate the likelihoods on all
+                    # levels taking the bias into account
                     self.recalculate_likelihoods()
 
                     # hierarchy analysis
@@ -1769,8 +1777,8 @@ class MLGLUE():
                     # if bias is included, compute the initial estimate
                     self.calculate_initial_bias_estimate()
                     
-                    # we now need to re-calculate the likelihoods on all levels
-                    # taking the bias into account
+                    # we now need to re-calculate the likelihoods on all
+                    # levels taking the bias into account
                     self.recalculate_likelihoods()
 
                     # hierarchy analysis
@@ -1876,13 +1884,14 @@ class MLGLUE():
 
         return np.asarray(uncertainty)
 
-@ray.remote
-class MLGLUEWorker():
-    """The MLGLUEWorker class.
+class MLGLUELocalWorker():
+    """The MLGLUELocalWorker class.
     
     This is a utility class used to parallelize MLGLUE. It enables using
     Ray actors for parallelization (previously MLGLUE used Ray's
-    multiprocessing API).
+    multiprocessing API). The class for the remote worker is defined by
+    just inheriting from this class and using the @ray.remote decorator.
+    The remote class is not separately documented.
 
     Parameters
     ----------
@@ -1933,11 +1942,13 @@ class MLGLUEWorker():
             n_levels,
             thresholds=None
         ):
-        """The MLGLUEWorker class.
+        """The MLGLUELocalWorker class.
     
-        This is a utility class used to parallelize MLGLUE. It enables using
-        Ray actors for parallelization (previously MLGLUE used Ray's
-        multiprocessing API).
+        This is a utility class used to parallelize MLGLUE. It enables
+        using Ray actors for parallelization (previously MLGLUE used Ray's
+        multiprocessing API). The class for the remote worker is defined by
+        just inheriting from this class and using the @ray.remote
+        decorator. The remote class is not separately documented.
 
         Parameters
         ----------
@@ -1946,8 +1957,8 @@ class MLGLUEWorker():
             applied. See the Notes section of the MLGLUE class for further
             details.
         likelihood
-            An instance of an MLGLUE likelihood object. See the Notes section
-            of the MLGLUE class for further details.
+            An instance of an MLGLUE likelihood object. See the Notes
+            section of the MLGLUE class for further details.
         obs : 1D array-like of float
             The observations for which the model simulates values.
         bias :  1D array-like of float
@@ -1955,8 +1966,8 @@ class MLGLUEWorker():
         n_levels : int
             The number of levels in the hierarchy.
         thresholds : 1D array-like of float
-            The level-dependent likelihood thresholds to use. Can be None if
-            only tuning is considered, has to have shape (n_levels,) if
+            The level-dependent likelihood thresholds to use. Can be None
+            if only tuning is considered, has to have shape (n_levels,) if
             sampling is considered.
         
         Attributes
@@ -1966,8 +1977,8 @@ class MLGLUEWorker():
             applied. See the Notes section of the MLGLUE class for further
             details.
         likelihood
-            An instance of an MLGLUE likelihood object. See the Notes section
-            of the MLGLUE class for further details.
+            An instance of an MLGLUE likelihood object. See the Notes
+            section of the MLGLUE class for further details.
         obs : 1D array-like of float
             The observations for which the model simulates values.
         bias :  1D array-like of float
@@ -1975,8 +1986,8 @@ class MLGLUEWorker():
         n_levels : int
             The number of levels in the hierarchy.
         thresholds : 1D array-like of float
-            The level-dependent likelihood thresholds to use. Can be None if
-            only tuning is considered, has to have shape (n_levels,) if
+            The level-dependent likelihood thresholds to use. Can be None
+            if only tuning is considered, has to have shape (n_levels,) if
             sampling is considered.
         """
         self.model = model
@@ -2073,10 +2084,11 @@ class MLGLUEWorker():
                 n_levels=self.n_levels,
                 run_id=run_id,
             )
-            # try getting the likelihood; if the likelihood function raises an
-            # error (e.g., when results are None), return None to signal that
-            # the evaluation for this sample was not successful. in that case
-            # the next sample is considered by the perform_MLGLUE method
+            # try getting the likelihood; if the likelihood function raises
+            # an error (e.g., when results are None), return None to signal
+            # that the evaluation for this sample was not successful. in
+            # that case the next sample is considered by the perform_MLGLUE
+            # method
             try:
                 likelihood_ = self.likelihood.likelihood(
                     obs=self.obs,
@@ -2202,7 +2214,8 @@ class MLGLUEWorker():
             level_checker = level__
             # if the likelihood is not None and is above the level-
             # dependent threshold, continue with the sample evaluation
-            if likelihood_ is not None and likelihood_ >= self.thresholds[level__ - 1]:
+            if likelihood_ is not None and \
+                likelihood_ >= self.thresholds[level__ - 1]:
                 # if this already was a call to the model on the
                 # highest level, set the variable to 1 (True)
                 if level__ == self.n_levels - 1:
@@ -2216,10 +2229,11 @@ class MLGLUEWorker():
                     n_levels=self.n_levels,
                     run_id=run_id,
                 )
-                # try getting the likelihood; if the likelihood function raises an
-                # error (e.g., when results are None), return None to signal that
-                # the evaluation for this sample was not successful. in that case
-                # the next sample is considered by the perform_MLGLUE method
+                # try getting the likelihood; if the likelihood function
+                # raises an error (e.g., when results are None), return
+                # None to signal that the evaluation for this sample was
+                # not successful. in that case the next sample is
+                # considered by the perform_MLGLUE method
                 try:
                     likelihood_ = self.likelihood.likelihood(
                         obs=self.obs,
@@ -2249,7 +2263,9 @@ class MLGLUEWorker():
         
         # if the likelihood is above the highest level threshold and
         # we are currently on the highest level, return all results
-        if likelihood_ is not None and likelihood_ >= self.thresholds[-1] and level_checker == self.n_levels - 1:
+        if likelihood_ is not None and \
+            likelihood_ >= self.thresholds[-1] and \
+                level_checker == self.n_levels - 1:
             return (
                 sample,
                 likelihood_,
@@ -2262,3 +2278,9 @@ class MLGLUEWorker():
         # to be considered
         else:
             return (highest_level_call, False)
+
+@ray.remote
+class MLGLUERemoteWorker(MLGLUELocalWorker):
+    """The remote version of MLGLUELocalWorker
+    """
+    pass
