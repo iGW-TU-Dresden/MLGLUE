@@ -33,11 +33,6 @@ If you find MLGLUE useful and use it in your research or project, we kindly
 ask you to cite the MLGLUE article published in the Water Resources
 Research journal as follows:
 
-- Collenteur, R.A., Bakker, M., Caljé, R., Klop, S.A., Schaars, F. (2019)
-  `Pastas: open source software for the analysis of groundwater time series.
-  Groundwater <https://ngwa.onlinelibrary.wiley.com/doi/full/10.1111/gwat
-  .12925>`_. doi: 10.1111/gwat.12925.
-
 - Rudolph, M. G., Wöhling, T., Wagener, T., & Hartmann, A. (2024).
   Extending GLUE with multilevel methods to accelerate statistical
   inversion of hydrological models. Water Resources Research, 60,
