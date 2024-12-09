@@ -19,7 +19,6 @@ setup(
     platforms = "Windows",
     install_requires = [
         "numpy>=1.23.5",
-        "matplotlib>=3.6.3",
         "ray>=2.2.0"
         ],
     packages = find_packages(exclude=[])

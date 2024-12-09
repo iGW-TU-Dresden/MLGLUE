@@ -1,6 +1,5 @@
 import numpy as np
 from copy import copy
-import matplotlib.pyplot as plt
 import ray
 from ray.util.multiprocessing import Pool
 
