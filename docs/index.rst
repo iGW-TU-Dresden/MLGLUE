@@ -26,7 +26,7 @@ MLGLUE
 
         MLGLUE code reference.
 
-You are using MLGLUE? Please Cite us!
+You are using MLGLUE? Please cite us!
 -------------------------------------
 
 If you find MLGLUE useful and use it in your research or project, we kindly
