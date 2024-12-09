@@ -21,6 +21,7 @@ such that the model simulations match the corresponding observations as
 closely as possible.
 
 .. admonition:: Example
+	
 	Let's consider an example we can re-use later: we assume the model to
 	simulate steady-state flow in a porous medium. Our observed data
 	consists of pressure measurements at different locations. The only
@@ -50,6 +51,7 @@ simulated values which correspond to the specific
 :math:`\boldsymbol \theta` we are considering.
 
 .. admonition:: Example
+
 	Coming back to the example, we can think of the conditioning step as a
 	form of *updating*. The prior of our permeability parameter may be very
 	wide; without any observations we just don't know anything about the
@@ -65,6 +67,7 @@ model evaluation. Now if each model run is computationally costly, this
 approach quickly becomes intractable.
 
 .. admonition:: Example
+
 	Imagine our example model to have a run-time of hours, days or even
 	weeks. This is common for complex models which are often used in
 	practice. Even if we could run multiple instances of our model in
