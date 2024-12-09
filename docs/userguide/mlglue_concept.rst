@@ -16,7 +16,7 @@ using model parameters :math:`\boldsymbol \theta`:
 .. math::
 	\mathbf{d} = \mathcal{F}(\boldsymbol \theta) + \boldsymbol \varepsilon
 
-Our aim when solving an inverse problem is to find parameters of some model
+Our aim when solving an inverse problem is to find parameters of the model
 such that the model simulations match the corresponding observations as
 closely as possible.
 
@@ -38,9 +38,13 @@ a *posterior* distribution (or just *posterior* for short). This
 conditioning is formalized in **Bayes' theorem**:
 
 .. math::
-	p_{post}\left(\boldsymbol \theta | \mathbf{d}\right) \propto \\
-	p_{prior}\left(\boldsymbol \theta\right) \\
+	p_{post}\left(\boldsymbol \theta | \mathbf{d}\right) \propto
+	p_{prior}\left(\boldsymbol \theta\right)
 	\mathcal{L}\left(\boldsymbol \theta | \mathbf{d}\right)
+
+Here, :math:`\mathcal{L}\left(\boldsymbol \theta | \mathbf{d}\right)` is
+the *likelihood*, which can be understood of a way to assess the
+goodness-of-fit of a certain value of :math:`\boldsymbol \theta`.
 
 .. note::
 	Coming back to the example, we can think of the conditioning step as a
