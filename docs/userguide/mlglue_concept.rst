@@ -20,7 +20,7 @@ Our aim when solving an inverse problem is to find parameters of the model
 such that the model simulations match the corresponding observations as
 closely as possible.
 
-.. note::
+.. admonition:: Example
 	Let's consider an example we can re-use later: we assume the model to
 	simulate steady-state flow in a porous medium. Our observed data
 	consists of pressure measurements at different locations. The only
@@ -45,11 +45,34 @@ conditioning is formalized in **Bayes' theorem**:
 Here, :math:`\mathcal{L}\left(\boldsymbol \theta | \mathbf{d}\right)` is
 the *likelihood*, which can be understood of a way to assess the
 goodness-of-fit of a certain value of :math:`\boldsymbol \theta`.
+Evaluating :math:`\mathcal{L}` requires running our model to obtain
+simulated values which correspond to the specific
+:math:`\boldsymbol \theta` we are considering.
 
-.. note::
+.. admonition:: Example
 	Coming back to the example, we can think of the conditioning step as a
 	form of *updating*. The prior of our permeability parameter may be very
 	wide; without any observations we just don't know anything about the
 	permeability. However, if observations become available, they can
 	constrain our prior beliefs and we update the *prior* using
 	Bayes' theorem to obtain the *posterior*.
+
+While the Bayesian approach is rather intuitive, we can usually not obtain
+the posterior analytically - we have to generate samples from the posterior
+by computing the likelihood for many differen samples of
+:math:`\boldsymbol \theta`. As explained before, each sample requires a
+model evaluation. Now if each model run is computationally costly, this
+approach quickly becomes intractable.
+
+.. admonition:: Example
+	Imagine our example model to have a run-time of hours, days or even
+	weeks. This is common for complex models which are often used in
+	practice. Even if we could run multiple instances of our model in
+	parallel, pushing thousand or millions of parameter samples through the
+	model will obviously not work in a practical context.
+
+.. caution::
+	There are many details, pitfalls, and caveats we did not mention in the
+	paragraphs above. But this is the general setting of Bayesian inference and
+	how computational cost can decide upon the applicability of such an
+	approach.
