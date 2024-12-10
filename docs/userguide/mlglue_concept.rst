@@ -24,7 +24,7 @@ We consider :math:`\boldsymbol \theta` to be a vector of random variables,
 which is associated with a prior probability distribution,
 :math:`p_{prior}(\boldsymbol \theta)`. Conditioning the prior on
 observations leads to the posterior probability distribution of the
-parameters, :math:`p_{post}(\boldsymbol \theta | \mathbf{d})` via Bayes'
+parameters, :math:`p_{post}(\boldsymbol \theta | \mathbf{d})`, via Bayes'
 theorem:
 
 .. math::
