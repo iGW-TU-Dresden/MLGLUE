@@ -2,10 +2,10 @@ The Concept of MLGLUE
 =====================
 
 In a nutshell, MLGLUE can be used to accelerate Bayesian inference of
-(hydrological) model parameters.
-In the following sections, general aspects about Bayesian inference as well
-as the details about MLGLUE are explained. Plase also look at the original
-publication about MLGLUE `here <https://doi.org/10.1029/2024WR037735>`_.
+(hydrological) model parameters. We assume that you are familiar with
+the general concept of Bayesian inference. For more details, references,
+etc., please also look at the original publication about MLGLUE
+`here <https://doi.org/10.1029/2024WR037735>`_.
 
 Inverse problems and Bayesian inference
 ---------------------------------------
@@ -20,23 +20,12 @@ Our aim when solving an inverse problem is to find parameters of the model
 such that the model simulations match the corresponding observations as
 closely as possible.
 
-.. admonition:: Example
-	
-	Let's consider an example we can re-use later: we assume the model to
-	simulate steady-state flow in a porous medium. Our observed data
-	consists of pressure measurements at different locations. The only
-	model parameter we consider is the homogeneous macroscopic permeability
-	of the porous medium.
-
-There are many different approaches to solving such problems. Bayesian
-inference is a highly popular statistical approach to the problem with many
-different specific methods associated with it. As a statistical approach it
-can be summarized as follows: we first consider all of our model parameters
-to be random variables. Without taking observations into account we
-define a *prior* distribution (or just *prior* for short) of the model
-parameters. Finally we condition the *prior* on our observations to obtain
-a *posterior* distribution (or just *posterior* for short). This
-conditioning is formalized in **Bayes' theorem**:
+We consider :math:`\boldsymbol \theta` to be a vector of random variables,
+which is associated with a prior probability distribution,
+:math:`p_{prior}(\boldsymbol \theta)`. Conditioning the prior on
+observations leads to the posterior probability distribution of the
+parameters, :math:`p_{post}(\boldsymbol \theta | \mathbf{d})` via Bayes'
+theorem:
 
 .. math::
 	p_{post}\left(\boldsymbol \theta | \mathbf{d}\right) \propto
@@ -44,38 +33,23 @@ conditioning is formalized in **Bayes' theorem**:
 	\mathcal{L}\left(\boldsymbol \theta | \mathbf{d}\right)
 
 Here, :math:`\mathcal{L}\left(\boldsymbol \theta | \mathbf{d}\right)` is
-the *likelihood*, which can be understood of a way to assess the
-goodness-of-fit of a certain value of :math:`\boldsymbol \theta`.
-Evaluating :math:`\mathcal{L}` requires running our model to obtain
-simulated values which correspond to the specific
-:math:`\boldsymbol \theta` we are considering.
-
-.. admonition:: Example
-
-	Coming back to the example, we can think of the conditioning step as a
-	form of *updating*. The prior of our permeability parameter may be very
-	wide; without any observations we just don't know anything about the
-	permeability. However, if observations become available, they can
-	constrain our prior beliefs and we update the *prior* using
-	Bayes' theorem to obtain the *posterior*.
+the *likelihood*.
 
 While the Bayesian approach is rather intuitive, we can usually not obtain
 the posterior analytically - we have to generate samples from the posterior
-by computing the likelihood for many differen samples of
-:math:`\boldsymbol \theta`. As explained before, each sample requires a
-model evaluation. Now if each model run is computationally costly, this
-approach quickly becomes intractable.
+by computing the likelihood for many different samples of
+:math:`\boldsymbol \theta` and each sample requires a model evaluation.
+Now if each model run is computationally costly, this approach quickly
+becomes intractable. Multilevel methods can help to alleviate the
+computational burden of the problem to allow for sampling-based approaches
+to Bayesian inference with costly models.
 
-.. admonition:: Example
+.. _multilevel methods:
 
-	Imagine our example model to have a run-time of hours, days or even
-	weeks. This is common for complex models which are often used in
-	practice. Even if we could run multiple instances of our model in
-	parallel, pushing thousand or millions of parameter samples through the
-	model will obviously not work in a practical context.
-
-.. caution::
-	There are many details, pitfalls, and caveats we did not mention in the
-	paragraphs above. But this is the general setting of Bayesian inference and
-	how computational cost can decide upon the applicability of such an
-	approach.
+Multilevel methods
+------------------
+The central idea of multilevel methods is simple: instead of computing a
+Monte Carlo estimate of a quantity of interest (QoI) using a model with
+high resolution, high accuracy and high computational cost we rely on
+models with lower resolution, lower accuracy, and lower computational cost
+to do most of the work.
