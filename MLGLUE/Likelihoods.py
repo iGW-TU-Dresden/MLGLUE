@@ -137,7 +137,7 @@ class InverseErrorVarianceLikelihood():
             raise
 
         # calculate the likelihood
-        residuals = np.asarray(obs) - np.asarray(sim) + np.asarray(bias)
+        residuals = np.asarray(sim) - np.asarray(obs) + np.asarray(bias)
         residuals *= weights
         ssr = np.sum(residuals ** 2)
         likelihood = (ssr / (len(obs) - 2)) ** (-self.T)
