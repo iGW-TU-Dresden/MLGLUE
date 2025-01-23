@@ -1507,13 +1507,17 @@ class MLGLUE():
 
         return
 
-    def perform_MLGLUE_multiprocessing_tuning(self, **kwargs):
+    def perform_MLGLUE_multiprocessing_tuning(self, restart_ray=True, **kwargs):
         """MLGLUE tuning using Ray actors.
         
         Perform MLGLUE tuning using Ray actors for parallelization.
 
         Parameters
         ----------
+        restart_ray : bool
+            Whether to restart Ray. This is useful if the user wants to
+            prevent Ray from restarting if it is already running (e.g.,
+            when a model is put in the object store).
         **kwargs
             Keyword arguments passed to Ray.init
 
@@ -1521,9 +1525,10 @@ class MLGLUE():
         -------
         None
         """
-        ray.shutdown()
-        ray.init(num_cpus=self.n_processors, **kwargs)
-        print("\nStarting tuning with Ray...")
+        if restart_ray:
+            ray.shutdown()
+            ray.init(num_cpus=self.n_processors, **kwargs)
+            print("\nStarting tuning with Ray...")
 
         # create actor pool
         workers = [MLGLUERemoteWorker.remote(
@@ -1547,15 +1552,20 @@ class MLGLUE():
                 for num, i in enumerate(zip(result[0], result[1])):
                     self.likelihoods_tuning[num].append(i[0])
                     self.results_analysis_tuning[num].append(i[1])
-        ray.shutdown()
+        if restart_ray:
+            ray.shutdown()
 
-    def perform_MLGLUE_multiprocessing_sampling(self, **kwargs):
+    def perform_MLGLUE_multiprocessing_sampling(self, restart_ray=True, **kwargs):
         """MLGLUE sampling using Ray actors.
         
         Perform MLGLUE sampling using Ray actors for parallelization.
 
         Parameters
         ----------
+        restart_ray : bool
+            Whether to restart Ray. This is useful if the user wants to
+            prevent Ray from restarting if it is already running (e.g.,
+            when a model is put in the object store).
         **kwargs
             Keyword arguments passed to Ray.init
 
@@ -1563,9 +1573,10 @@ class MLGLUE():
         -------
         None
         """
-        ray.shutdown()
-        ray.init(num_cpus=self.n_processors, **kwargs)
-        print("\nStarting sampling with Ray...")
+        if restart_ray:
+            ray.shutdown()
+            ray.init(num_cpus=self.n_processors, **kwargs)
+            print("\nStarting sampling with Ray...")
 
         # create actor pool
         workers = [MLGLUERemoteWorker.remote(
@@ -1597,7 +1608,8 @@ class MLGLUE():
             elif eval_ is not None and eval_[1] is False:
                 if eval_[0] == 1:
                     self.highest_level_calls.append(eval_[0])
-        ray.shutdown()
+        if restart_ray:
+            ray.shutdown()
 
     def perform_MLGLUE_singlecore_tuning(self):
         """MLGLUE tuning using a single CPU.
@@ -1639,7 +1651,7 @@ class MLGLUE():
 
         return
     
-    def perform_MLGLUE(self, **kwargs):
+    def perform_MLGLUE(self, restart_ray=True, **kwargs):
         """Perform the full MLGLUE algorithm. 
         
         Perform the full MLGLUE algorithm using single-core or parallelized
@@ -1648,6 +1660,10 @@ class MLGLUE():
 
         Parameters
         ----------
+        restart_ray : bool
+            Whether to restart Ray. This is useful if the user wants to
+            prevent Ray from restarting if it is already running (e.g.,
+            when a model is put in the object store).
         **kwargs : dict
             Additional keyword arguments passed to Ray.init.
 
@@ -1673,7 +1689,7 @@ class MLGLUE():
         # running Ray instance. if this throws an error (either because
         # there is nothing to shut down or because Ray is not installed),
         # the user is notified.
-        if self.multiprocessing:
+        if self.multiprocessing and restart_ray == True:
             try:
                 ray.shutdown()
             except:
@@ -1701,7 +1717,10 @@ class MLGLUE():
         if self.multiprocessing:
             # perform tuning
             if self.thresholds_predefined == False:
-                self.perform_MLGLUE_multiprocessing_tuning(**kwargs)
+                self.perform_MLGLUE_multiprocessing_tuning(
+                    restart_ray=restart_ray,
+                    **kwargs
+                )
 
                 # make results_analysis_tuning a numpy array
                 self.results_analysis_tuning = np.asarray(
@@ -1744,7 +1763,10 @@ class MLGLUE():
                     self.calculate_thresholds()
             
             # perform sampling
-            self.perform_MLGLUE_multiprocessing_sampling(**kwargs)
+            self.perform_MLGLUE_multiprocessing_sampling(
+                restart_ray=restart_ray,
+                **kwargs
+            )
         
         else:
             # perform tuning
